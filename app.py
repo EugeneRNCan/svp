@@ -32,6 +32,11 @@ import xml.etree.ElementTree as ET
 import result as rslt
 import script
 
+
+#modification for UML purposes
+#import VV
+
+
 extended_path_list = []
 
 class SVPError(Exception):
@@ -147,7 +152,10 @@ class MultiProcess(multiprocessing.Process):
 
 # cmd_line_target_dirs = [SUITES_DIR, TESTS_DIR, SCRIPTS_DIR]
 
-def process_run(filename, env, config, params, lib_path, conn):
+# modification for UML purposes
+
+
+def process_run(filename, env, config, params, lib_path, conn, run_conn):
     name = script_path = None
     try:
         sys.stdout = sys.stderr = open(os.path.join(trace_dir(), 'sunssvp_script.log'), "w", buffering=0)
@@ -159,7 +167,7 @@ def process_run(filename, env, config, params, lib_path, conn):
         try:
             m = importlib.import_module(name)
             info = m.script_info()
-            test_script = RunScript(env=env, info=info, config=config, config_file=None, params=params, conn=conn)
+            test_script = RunScript(env=env, info=info, config=config, config_file=None, params=params, conn=conn, run_conn=run_conn)
             m.run(test_script)
         except Exception, e:
             raise
@@ -168,6 +176,19 @@ def process_run(filename, env, config, params, lib_path, conn):
             del sys.modules[name]
         if sys.path[0] == script_path:
             del sys.path[0]
+        if lib_path is not None and sys.path[0] == lib_path:
+            del sys.path[0]
+
+
+def real_time_plotting(lib_path, rtp_conn):
+    sys.path.insert(0, lib_path + '\\svpelab')
+    try:
+        n = importlib.import_module('RealTimePlotting')
+        if n is not None:
+            n.RealTimePlottingDialog(rtp_conn)
+    except Exception, e:
+        raise
+    finally:
         if lib_path is not None and sys.path[0] == lib_path:
             del sys.path[0]
 
@@ -431,10 +452,11 @@ RUN_MSG_CMD_RESUME = 'resume'
 RUN_MSG_CMD_STOP = 'stop'
 
 class RunScript(script.Script):
-    def __init__(self, env=None, info=None, config=None, config_file=None, params=None, conn=None):
+    def __init__(self, env=None, info=None, config=None, config_file=None, params=None, conn=None, run_conn=None):
         script.Script.__init__(self, env=env, info=info, config=config, config_file=config_file, params=params)
 
         self._conn = conn
+        self.run_conn = run_conn
         self._files_dir = env.get('files_dir', '')
         self._results_dir = env.get('results_dir', '')
         self._result_dir = env.get('result_dir', '')
@@ -616,9 +638,12 @@ class RunContext(object):
 
         self.svp_file = svp_file
         self.process = None
+        self.subprocess = None
         self.log_file = None
         self.test_conn = None
         self.app_conn = None
+        self.rtp_conn = None
+        self.run_conn = None
         self.suites = []
         self.suite = None
         self.suite_params = None
@@ -627,6 +652,12 @@ class RunContext(object):
         self.active_result = None
         self.status = None
 
+        #modification for UML purposes
+        '''
+        self.m = None
+        self.info = None
+        self.test_script = None
+        '''
     def is_alive(self):
         if self.process is not None:
             return self.process.is_alive()
@@ -662,6 +693,7 @@ class RunContext(object):
 
         # start
         self.run_next()
+
 
     def run_next(self):
         while self.suite:
@@ -720,7 +752,6 @@ class RunContext(object):
                 suite.result_dir = os.path.join(self.suite_result_dir, result_file_name(name))
                 self.suite = suite
                 self.suite_result_dir = suite.result_dir
-                makedirs(self.suite_result_dir)
                 if self.results_tree:
                     suite.result = self.active_result
                 else:
@@ -785,7 +816,8 @@ class RunContext(object):
     def start(self, filename, env=None, config=None, params=None):
         if self.process is not None:
             raise SVPError('Execution context process already running')
-
+        if self.subprocess is not None:
+            raise SVPError('Real-time plotting process already running')
         try:
             if self.test_conn is not None:
                 self.test_conn.close()
@@ -793,11 +825,19 @@ class RunContext(object):
             if self.app_conn is not None:
                 self.app_conn.close()
                 self.app_conn = None
+            #Real-time plotting connection
+            if self.rtp_conn is not None:
+                self.rtp_conn.close()
+                self.test_conn = None
+            if self.run_conn is not None:
+                self.run_conn.close()
+                self.run_conn = None
         except Exception, e:
             pass
 
         try:
             self.test_conn, self.app_conn = multiprocessing.Pipe()
+            self.rtp_conn, self.run_conn = multiprocessing.Pipe()
         except Exception, e:
             print 'Error creating execution context pipe: %s' % (e)
 
@@ -806,10 +846,16 @@ class RunContext(object):
                 script_config = copy.deepcopy(config)
             else:
                 script_config = None
-            self.process = MultiProcess(name='svp_process', target=process_run, args=(filename, env, script_config,
-                                                                                      params, self.lib_path,
-                                                                                      self.test_conn))
+            # modification for UML purposes
+            '''
+            self.process = MultiProcess(name='svp_process', target=RunContext.process_run(), args=(filename, env, script_config,
+                                                                                      params, self.lib_path, self.test_conn))
+            '''
+            self.process = MultiProcess(name='svp_process', target=process_run, args=(filename, env, script_config, params, self.lib_path, self.test_conn, self.run_conn))
+            self.subprocess = MultiProcess(name='rtp_process', target=real_time_plotting, args=(self.lib_path, self.rtp_conn))
+
             self.process.start()
+            self.subprocess.start()
         except Exception, e:
             # raise
             print 'Error creating execution context process: %s' % (e)
@@ -817,10 +863,13 @@ class RunContext(object):
                 if self.process:
                     self.process.terminate()
                     # self.process.join(timeout=0)
+                if self.subprocess:
+                    self.subprocess.terminate()
             except Exception, e:
                 pass
 
             self.process = None
+            self.subprocess = None
 
     def terminate(self):
         if self.process and self.process.is_alive():
@@ -829,6 +878,12 @@ class RunContext(object):
                 self.process.terminate()
             except Exception, e:
                 print 'Process termination error: %s' % (e)
+        if self.subprocess and self.subprocess.is_alive():
+            # ### send stop signal to process, stop forcefully for now
+            try:
+                self.subprocess.terminate()
+            except Exception, e:
+                print 'SubProcess termination error: %s' % (e)
         self.status = script.RESULT_FAIL
         self.clean_up()
 
@@ -855,6 +910,8 @@ class RunContext(object):
         try:
             if self.process:
                 self.process.join(timeout=0)
+            if self.subprocess:
+                self.subprocess.join(timeout=0)
         except Exception, e:
             pass
 
@@ -863,6 +920,7 @@ class RunContext(object):
                 self.update_result(status=script.RESULT_FAIL)
 
         self.process = None
+        self.subprocess = None
 
     def periodic(self):
         if self.app_conn:
@@ -924,11 +982,11 @@ class RunContext(object):
 
                     count += 1
                 else:
-                    if self.process and not self.process.is_alive():
+                    if self.process and not self.process.is_alive() and self.subprocess and not self.subprocess.is_alive():
                         self.clean_up()
                     break
 
-        if self.active and self.process is None:
+        if self.active and self.process is None and self.subprocess is None:
             self.run_next()
 
     def add_result(self, result):
@@ -951,6 +1009,34 @@ class RunContext(object):
         print 'writing results: %s' % (self.results_file)
         self.results.to_xml_file(self.results_file)
 
+    # modification for UML purposes
+    '''
+    def process_run(self, filename, env, config, params, lib_path, conn):
+        name = script_path = None
+        try:
+            sys.stdout = sys.stderr = open(os.path.join(trace_dir(), 'sunssvp_script.log'), "w", buffering=0)
+            script_path, name = os.path.split(filename)
+            name, ext = os.path.splitext(name)
+            if lib_path is not None:
+                sys.path.insert(0, lib_path)
+            sys.path.insert(0, script_path)
+            try:
+                # modification for UML purposes
+                self.m = importlib.import_module(name)
+                #self.m = VV
+                self.info = self.m.script_info()
+                self.test_script = RunScript(env=env, info=self.info, config=config, config_file=None, params=params, conn=conn)
+                self.m.run(self.test_script)
+            except Exception, e:
+                raise
+        finally:
+            if name in sys.modules:
+                del sys.modules[name]
+            if sys.path[0] == script_path:
+                del sys.path[0]
+            if lib_path is not None and sys.path[0] == lib_path:
+                del sys.path[0]
+    '''
     def alert(self, message):
         print message
 
@@ -1192,9 +1278,5 @@ SVP_PROG_NAME = 'SVP'
 if __name__ == "__main__":
     # On Windows calling this function is necessary.
     multiprocessing.freeze_support()
-
-    app = SVP(1)
-    app.run({'svp_dir': 'c:/users/bob/pycharmprojects/svp test/',
-             'svp_file': 'suite_a.ste'})
 
 

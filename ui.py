@@ -36,7 +36,7 @@ import wx.adv
 import xlsxwriter
 
 import numpy
-import wxmplot
+#import wxmplot
 import shutil
 from wx.lib.embeddedimage import PyEmbeddedImage
 from wx.lib.wordwrap import wordwrap
@@ -88,9 +88,12 @@ OP_ABOUT = 17
 OP_COPY = 18
 OP_OPEN = 19
 OP_RESULT = 20
+OP_VIEW_RTP = 21
+OP_RTP_ACT = 22
+OP_RTP_PREF = 23
 
 OP_ID_MIN = 1
-OP_ID_MAX = 20
+OP_ID_MAX = 23
 
 TEXT_WRAP = 250
 
@@ -271,6 +274,15 @@ def init_image_list():
         bm = images['file']
     images['xlsx'] = image_list.Add(bm)
     '''
+
+def RealTimePlotting(RunCtrl):
+    # adding the Real-time plotting dialog
+    #wd = self.run_panel.Parent.entity.get_working_dir()
+    #m = wd.svp_ext.get('RealTimePlotting')
+    #if m is not None:
+    #    m.RealTimePlottingDialog(self)
+    print 'blablabla'
+
 
 def result_image(result):
     image = None
@@ -1816,9 +1828,9 @@ class EntityTreeEntry(object):
     def op_run(self, event):
         dialog = RunDialog(self)
         dialog.CenterOnParent()
-        ### dialog.ShowModal()
+        ###dialog.ShowModal()
         dialog.Show()
-        ### dialog.Destroy()
+        ###dialog.Destroy()
         # self.get_working_dir().rescan()
 
         # self.entity_tree.entity_window.app_wx.process.stop()
@@ -2675,7 +2687,7 @@ class ResultEntry(EntityTreeEntry):
 
     def op_open(self, evt, title='Open Result'):
         if self.ext == svp.CSV_EXT:
-            frame = wxmplot.PlotFrame()
+            #frame = wxmplot.PlotFrame()
             filename = os.path.join(self.working_dir_path(), svp.RESULTS_DIR, self.result_name, self.result.filename)
             f = open(filename, 'r')
             names = f.readline().split(',')
@@ -2702,7 +2714,7 @@ class ResultEntry(EntityTreeEntry):
             time_array = numpy.array(value_arrays[0])
             for i in range(1, columns):
                 value_array = numpy.array(value_arrays[i])
-                frame.oplot(time_array, value_array, label=names[i])
+                #frame.oplot(time_array, value_array, label=names[i])
 
             '''
             r = numpy.recfromcsv(filename, case_sensitive=True)
@@ -2721,8 +2733,8 @@ class ResultEntry(EntityTreeEntry):
             #            xlabel='x (mm)', ylabel='y1', ymin=-0.75, ymax=0.75)
             # pframe.oplot(x, y2, y2label='y2', side='right', ymin=0)
 
-            frame.SetTitle(self.name)
-            frame.Show()
+            #frame.SetTitle(self.name)
+            #frame.Show()
             # frame.ToggleWindowStyle(wx.STAY_ON_TOP)
         else:
             result_dir = os.path.join(self.working_dir_path(), svp.RESULTS_DIR, self.name)
@@ -2893,7 +2905,7 @@ class ResultEntry(EntityTreeEntry):
             y2 = 92 + 65*np.cos(x/16.) * np.exp(-x*x/7e3) + noise(size=n, scale=0.3)
             '''
 
-            frame = wxmplot.PlotFrame()
+            #frame = wxmplot.PlotFrame()
             filename = os.path.join(self.working_dir_path(), svp.RESULTS_DIR, self.name)
             f = open(filename, 'r')
             names = f.readline().split(',')
@@ -2920,7 +2932,7 @@ class ResultEntry(EntityTreeEntry):
             time_array = numpy.array(value_arrays[0])
             for i in range(1, columns):
                 value_array = numpy.array(value_arrays[i])
-                frame.oplot(time_array, value_array, label=names[i])
+                #frame.oplot(time_array, value_array, label=names[i])
 
             '''
             r = numpy.recfromcsv(filename, case_sensitive=True)
@@ -2939,9 +2951,9 @@ class ResultEntry(EntityTreeEntry):
             #            xlabel='x (mm)', ylabel='y1', ymin=-0.75, ymax=0.75)
             # pframe.oplot(x, y2, y2label='y2', side='right', ymin=0)
 
-            frame.SetTitle(self.name)
-            frame.Show()
-            frame.ToggleWindowStyle(wx.STAY_ON_TOP)
+            #frame.SetTitle(self.name)
+            #frame.Show()
+            #frame.ToggleWindowStyle(wx.STAY_ON_TOP)
 
 
 class ScriptDirectory(Directory):
@@ -3775,6 +3787,7 @@ class TestEntry(EntityTreeEntry):
         title.SetBackgroundColour('white')
         logo_sizer = wx.BoxSizer(wx.VERTICAL)
         logo_h_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        print(title,wx.Bitmap(os.path.join(images_path, 'test_32.gif')))
         bitmap = wx.StaticBitmap(parent=title, bitmap=wx.Bitmap(os.path.join(images_path, 'test_32.gif')))
         text = wx.StaticText(title, -1, self.name.split('.')[0])
         text.SetFont(wx.Font(16, wx.DEFAULT, wx.NORMAL, wx.NORMAL))
@@ -3986,7 +3999,7 @@ class SuiteTestEntry(EntityTreeEntry):
         info_panel.Hide()
 
         info_panel.panel_sizer = wx.GridBagSizer(hgap=30, vgap=0)
-        info_panel.panel_sizer.SetEmptyCellSize((0,0))
+        info_panel.panel_sizer.SetEmptyCellSize((0, 0))
         info_panel.SetBackgroundColour('white')
 
         title = wx.Panel(info_panel, -1)
@@ -4082,6 +4095,11 @@ class ToolFrame(wx.Frame):
     menu_add_items = [(wx.ID_ANY, 'Suite...', '', None, OP_ADD_SUITE),
                       (wx.ID_ANY, 'Test...', '', None, OP_ADD_TEST)]
 
+    menu_rtp_items = [(wx.ID_ANY, 'active', '', None, OP_RTP_ACT),
+                           (wx.ID_ANY, 'Preference', '', None, OP_RTP_PREF)]
+
+    menu_view_items = [(wx.ID_ANY, 'Real-time Plotting', '', menu_rtp_items, OP_VIEW_RTP)]
+
     menu_file_items = [(wx.ID_ANY, 'New', '', menu_new_items, None),
                        (wx.ID_ANY, '', '', None, None),
                        (wx.ID_ANY, 'Add SVP Directory...', '', None, OP_ADD_WORKING_DIR),
@@ -4157,6 +4175,8 @@ class ToolFrame(wx.Frame):
         menu_bar.Append(file_menu, 'File')
         edit_menu, enabled = self.create_menu(ToolFrame.menu_edit_items, ops)
         menu_bar.Append(edit_menu, 'Edit')
+        view_menu, enabled = self.create_menu(ToolFrame.menu_view_items, ops)
+        menu_bar.Append(view_menu, 'View')
         help_menu, enabled = self.create_menu(ToolFrame.menu_help_items, ops)
         menu_bar.Append(help_menu, 'Help')
         self.SetMenuBar(menu_bar)
@@ -4538,6 +4558,8 @@ class RunCtrl(object):
         self.run_panel = run_panel
         self.run_bitmap = wx.Bitmap(os.path.join(images_path, 'run_96.gif'), wx.BITMAP_TYPE_GIF)
         self.stop_bitmap = wx.Bitmap(os.path.join(images_path, 'stop_96.gif'), wx.BITMAP_TYPE_GIF)
+        # Real-time plotting changes
+        self.rtp_bitmap = wx.Bitmap(os.path.join(images_path, 'rtp_96.gif'), wx.BITMAP_TYPE_GIF)
         self.run_button = wx.BitmapButton(self.parent, bitmap=self.run_bitmap)
         self.run_button.Bind(wx.EVT_BUTTON, self.run)
         self.run_button.Disable()
@@ -4545,6 +4567,11 @@ class RunCtrl(object):
         self.stop_button.Bind(wx.EVT_BUTTON, self.stop)
         self.stop_button.SetFocus()
         self.stop_button.Enable()
+        # Real-time plotting changes
+        self.rtp_button = wx.BitmapButton(self.parent, bitmap=self.rtp_bitmap)
+        self.rtp_button.Bind(wx.EVT_BUTTON, self.rtp)
+        self.rtp_button.Enable()
+        self.rtp_process = None
 
     def update(self, status):
         if status == rslt.RESULT_RUNNING:
@@ -4559,6 +4586,11 @@ class RunCtrl(object):
 
     def stop(self, event):
         self.run_panel.run_tree.run_context.stop()
+
+    # Real-time plotting changes
+    def rtp(self, event):
+        self.rtp_process = svp.MultiProcess(name='Real-time Plotting', target=RealTimePlotting, args=(self,))
+        self.rtp_process.start()
 
 
 class RunPanel(wx.Panel):
@@ -4612,6 +4644,8 @@ class RunPanel(wx.Panel):
         self.run_ctrl = RunCtrl(self.status_bar, self)
         status_bar_ctrl_sizer.Add(self.run_ctrl.run_button, 0, wx.TOP|wx.BOTTOM|wx.LEFT|wx.RIGHT, 5)
         status_bar_ctrl_sizer.Add(self.run_ctrl.stop_button, 0, wx.TOP|wx.BOTTOM|wx.LEFT|wx.RIGHT, 5)
+        # Real-time plotting changes
+        status_bar_ctrl_sizer.Add(self.run_ctrl.rtp_button, 0, wx.TOP|wx.BOTTOM|wx.LEFT|wx.RIGHT, 5)
 
         self.sizer.Add(self.sp, 1, wx.EXPAND)
         self.sizer.Add(self.status_bar, 0, wx.EXPAND)
@@ -4945,6 +4979,7 @@ class RunDialog(wx.Dialog):
 
         self.Bind(wx.EVT_CLOSE, self.OnClose)
 
+
     def OnClose(self, event):
         if event.CanVeto():
             if self.panel.run_tree.run_context.active:
@@ -4957,12 +4992,19 @@ class RunDialog(wx.Dialog):
                     self.panel.run_tree.run_context.terminate()
                     break
                 count -= 1
+
+        if self.panel.run_ctrl.rtp_process and self.panel.run_ctrl.rtp_process.is_alive():
+            try:
+                self.panel.run_ctrl.rtp_process.terminate()
+            except Exception, e:
+                print 'Process termination error: %s' % (e)
         self.Destroy()
 
 
 class Tool(object):
     def __init__(self):
         self.xyz = None
+        self.id= None
         try:
             import win32api
 
@@ -4974,8 +5016,9 @@ class Tool(object):
     def run(self, args=None):
         if args is not None:
             try:
-                svp_cmd = svp.SVP(self.id)
-                svp_cmd.run({'svp_dir': args.svp_dir,
+                # modification for UML purposes
+                self.svp_cmd = svp.SVP(self.id)
+                self.svp_cmd.run({'svp_dir': args.svp_dir,
                              'svp_file': args.target})
                 '''
                 app_cmd.run(args.svp_dir, args.target, args.result)
@@ -5008,8 +5051,7 @@ def main(args=None):
 
 if __name__ == "__main__":
 
-    # sys.stdout = sys.stderr = open(os.path.join(svp.trace_dir(), 'sunssvp.log'), "w", buffering=0)
-
+    #sys.stdout = sys.stderr = open(os.path.join(svp.trace_dir(), 'sunssvp.log'), "w", buffering=0)
     # On Windows calling this function is necessary.
     multiprocessing.freeze_support()
 
@@ -5019,6 +5061,5 @@ if __name__ == "__main__":
         parser.add_argument('svp_dir', help='SVP directory')
         parser.add_argument('target', help='suite/test/script in SVP directory')
         args = parser.parse_args()
-
     err = main(args)
     sys.exit(err)
