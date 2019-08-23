@@ -3,7 +3,7 @@ import os
 import wxmplot
 import numpy
 import openpyxl
-from svpelab import result as rslt
+from . import result as rslt
 import csv
 import xlsxwriter
 
@@ -62,7 +62,7 @@ class ResultWorkbook(object):
         chart.set_y_axis({'name': params.get('plot.y.title', '')})
         chart.set_y2_axis({'name': params.get('plot.y2.title', '')})
         chart.set_style(1)
-        print('ws name = %s' % (ws.get_name()))
+        print(('ws name = %s' % (ws.get_name())))
 
         # chart.x_axis.title = params.get('plot.x.title', '')
         # chart.y_axis.title = params.get('plot.y.title', '')
@@ -84,7 +84,7 @@ class ResultWorkbook(object):
             for name in y_points:
                 try:
                     col = point_names.index(name)
-                    print('col = %s' % col)
+                    print(('col = %s' % col))
                     line_color = params.get('plot.%s.color' % name, colors[color_idx])
                     point = params.get('plot.%s.point' % name, 'False')
                     if point == 'True':
@@ -110,7 +110,7 @@ class ResultWorkbook(object):
             for name in y2_points:
                 try:
                     col = point_names.index(name)
-                    print('col = %s' % col)
+                    print(('col = %s' % col))
                     line_color = params.get('plot.%s.color' % name, colors[color_idx])
                     point = params.get('plot.%s.point' % name, 'False')
                     if point == 'True':
@@ -186,7 +186,7 @@ class ResultWorkbook(object):
             else:
                 chart_title = title + '_chart'
 
-            print('params - plot: %s - %s' % (params, params.get('plot.title')))
+            print(('params - plot: %s - %s' % (params, params.get('plot.title'))))
             if params is not None and params.get('plot.title') is not None:
                 self.add_chart(ws, params=params)
 
@@ -259,7 +259,7 @@ class ResultWorkbookOPX(object):
             name = x_points[0]
             try:
                 col = point_names.index(name) + 1
-                print('x: %s %s' % (col, ws.max_row))
+                print(('x: %s %s' % (col, ws.max_row)))
                 x_values = openpyxl.chart.Reference(ws, min_col=col, min_row=2, max_row=ws.max_row)
             except ValueError:
                 pass
@@ -356,7 +356,7 @@ class ResultWorkbookOPX(object):
             else:
                 chart_title = title + '_chart'
 
-            print('params - plot: %s - %s' % (params, params.get('plot.title')))
+            print(('params - plot: %s - %s' % (params, params.get('plot.title'))))
             if params is not None and params.get('plot.title') is not None:
                 self.add_chart(ws, params=params)
 
@@ -404,7 +404,7 @@ class ResultMenu(object):
 
     def create_xlsx(self, arg=None):
         filename = os.path.join(self.result_dir, self.result_name, self.result_name + '.xlsx')
-        print('creating result: %s %s %s' % (self.result_dir, self.result_name, self.result_name))
+        print(('creating result: %s %s %s' % (self.result_dir, self.result_name, self.result_name)))
         self.to_xlsx(self.result, filename=filename)
 
     def to_xlsx(self, r, wb=None, filename=None):
@@ -433,7 +433,7 @@ class ResultMenu(object):
 
     def create_xlsx_alt(self, arg=None):
         filename = os.path.join(self.result_dir, self.result_name, self.result_name + '.xlsx')
-        print('creating result: %s %s %s' % (self.result_dir, self.result_name, self.result_name))
+        print(('creating result: %s %s %s' % (self.result_dir, self.result_name, self.result_name)))
         self.to_xlsx_alt(self.result, filename=filename)
 
     def to_xlsx_alt(self, r, wb=None, filename=None):
@@ -483,7 +483,7 @@ class ResultMenu(object):
                     v = float(values[i])
                     value_arrays[i].append(v)
                 except Exception as e:
-                    value_arrays[i].append('nan')
+                    value_arrays[i].append(0)
                     pass
 
         time_array = numpy.array(value_arrays[0])
@@ -494,12 +494,12 @@ class ResultMenu(object):
         '''
         r = numpy.recfromcsv(filename, case_sensitive=True)
         print(repr(r))
-        print(r.dtype)
+        print r.dtype
         names = r.dtype.names
         x = names[0]
-        print(r[x])
+        print r[x]
         for name in names[1:]:
-            # print(name, r[x], r[name])
+            # print name, r[x], r[name]
             frame.oplot(r[x], r[name])
         '''
         # pframe.plot(x, y1, title='Test 2 Axes with different y scales',
