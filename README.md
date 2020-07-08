@@ -1,32 +1,33 @@
-# svp
-System Validation Platform
+![SVP Logo](images/OpenSVP.png?raw=true)
 
-Note that you may want the following python environment for running the SVP:
+---
 
-    pyVISA 1.9.1
-    PyYAML 3.1.3
-    Pypubsub 4.0.0
-    XlsxWriter 1.1.0
-    packports.functools-lru-cache 1.5
-    cycler 0.10.0
-    enum34 1.1.6
-    et-xmlfile 1.0.1
-    future 0.16.0
-    iso8601 0.1.12
-    jdcal 1.4
-    kiwisolver 1.0.1
-    matplotlib 2.2.3
-    numpy 1.15.1
-    openpyxl 2.5.7
-    pip 18.0
-    pyparsing 2.2.1
-    pysunspec 1.0.8
-    python-dateutil 2.7.3
-    pytz 2018.5
-    serial 0.0.69
-    setuptools 40.2.0
-    six 1.11.0
-    typing 3.6.6
-    wheel 0.31.1
-    wxPythong 4.0.3
-    wxmplot 0.9.30
+[Sunspec Alliance](https://sunspec.org/) is an alliance of over 100 solar and storage distributed energy industry participants, together pursuing information standards to enable “plug & play” system interoperability.
+
+[CanmetENERGY-Varennes](https://www.nrcan.gc.ca/science-data/research-centres-labs/canmetenergy-research-centres/varennes-qc-research-centre/5761) is a research center designing and implementing clean energy solutions, and build on knowledge that helps produce and use energy in ways that are more efficient and sustainable.
+
+This repository contains all of the open-source OpenSVP components written in Python 3.7
+
+
+## Contribution
+
+For the contribution list, please refer to [Contribution section](doc/CONTRIB.md)
+
+### Installation
+
+Please refer to the [Install section](doc/INSTALL.md) for detailed instruction
+
+### SVP Scripts
+
+There is a few scripts derived from the [IEEE 1547.1 standard][1547-1-url]
+
+### Support
+
+For any bugs/issues, please refer to the [bug tracker][bug-tracker-url] section.
+
+
+🐙 was here.
+
+[bug-tracker-url]: https://github.com/BuiMCanmet/svp/issues
+[1547-1-url]: https://github.com/BuiMCanmet/svp_1547.1/tree/master_python37
+
