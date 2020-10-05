@@ -78,6 +78,38 @@ class BoundControlBox(wx.Panel):
     def manual_value(self):
         return self.value
 
+class Preference_canvas(FigCanvas):
+    def __init__(self, panel=wx.Panel):
+        self.pref_figure = Figure()
+        FigCanvas.__init__(self, panel, -1, self.pref_figure)
+
+
+
+    def Create_Figure(self, type=None, parameters={}):
+
+        self.type = type
+        self.parameters = parameters
+
+        if self.type == 'Time-based':
+            self.Time_based_Figure()
+        elif self.type == 'XY':
+            self.XY_Figure()
+        elif self.type == 'CPF':
+            self.CPF_Figure()
+
+    def Time_based_Figure(self):
+
+        axes = self.pref_figure.add_subplot(111)
+        axes.set_facecolor('white')
+        axes.set_ylabel(self.parameters['y1 axis title'])
+        axes.set_xlabel(self.parameters['x axis title'])
+
+    def XY_Figure(self):
+        a = 0
+
+    def CPF_Figure(self):
+        a = 0
+
 
 class GraphFrame(wx.Frame):
     """ The main frame of the application
@@ -195,7 +227,7 @@ class GraphFrame(wx.Frame):
             if self.rtp_conn:
                 if self.rtp_conn.poll() is True:
                     data = self.rtp_conn.recv()
-        except Exception, e:
+        except Exception as e:
             raise
         if data is not None:
             if isinstance(data, type(pd.DataFrame())) is False:
@@ -286,7 +318,7 @@ class GraphFrame(wx.Frame):
             self.xy = [0, 0]
         else:
             a = -1
-            r = range(0, int(np.ceil((len(self.xy_list) + 1) * 0.25)))
+            r = list(range(0, int(np.ceil((len(self.xy_list) + 1) * 0.25))))
             r.reverse()
             if len(self.xy_list) < 4:
                 self.xy_plots = self.fig_xy.subplots(1, len(self.xy_list) + 1, squeeze=False)
@@ -381,14 +413,15 @@ class GraphFrame(wx.Frame):
             self.xy_plot_enable = False
             if self.xy_plot_first_index is not None:
                 self.xy_plot_first_index = None
-        elif 'TR_4' in self.df['event'][-1]:
+        elif 'TR_2' in self.df['EVENT'][-1]:
             self.xy_plot_enable = True
             if self.xy_plot_first_index is None:
                 self.xy_plot_first_index = self.df.index[-1]
 
         if self.xy_plot_enable is True:
 
-            xy_df = pd.concat([self.df_x.loc[self.xy_plot_first_index:, self.df_x.columns[0]], self.df_y.loc[self.xy_plot_first_index:, self.df_y.columns[0]]], axis=1)
+            xy_df = pd.concat([self.df_x.loc[self.xy_plot_first_index:, self.df_x.columns[0]],
+                               self.df_y.loc[self.xy_plot_first_index:, self.df_y.columns[0]]], axis=1)
             self.xy_df = self.xy_df.append(xy_df)
             # Using setp here is convenient, because get_xticklabels
             # returns a list over which one needs to explicitly

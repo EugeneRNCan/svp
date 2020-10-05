@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+
+
+
 """
 
 Copyright 2018, SunSpec Alliance
@@ -17,13 +20,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 """
+import textwrap
+from builtins import input
+from builtins import range
+
 
 import os
 import sys
 import multiprocessing
 import argparse
 import traceback
-import imp
+from importlib.machinery import SourceFileLoader as imp
 import importlib
 import datetime
 import time
@@ -33,21 +40,20 @@ import glob
 import multiprocessing
 import wx
 import wx.adv
+from wx.lib import plot as wxplot
 import xlsxwriter
 
 import numpy
-#import wxmplot
+import wxmplot
 import shutil
-from wx.lib.embeddedimage import PyEmbeddedImage
-from wx.lib.wordwrap import wordwrap
-import json
-import urllib
-import urllib2
+
 
 import app as svp
 import result as rslt
 import script
 import svptreectrl as treectrl
+
+import RealTimePlotting as RTP
 
 '''
 import sunspec.core.util as util
@@ -61,7 +67,7 @@ import openpyxl
 
 wx_app = None
 
-VERSION = '1.6.0'
+VERSION = '2.0.0'
 
 APP_NAME = 'SVP'
 APP_LABEL = 'System Validation Platform'
@@ -88,12 +94,12 @@ OP_ABOUT = 17
 OP_COPY = 18
 OP_OPEN = 19
 OP_RESULT = 20
-OP_VIEW_RTP = 21
-OP_RTP_ACT = 22
-OP_RTP_PREF = 23
+OP_RTP_PREF = 21
+OP_PKG = 30
+
 
 OP_ID_MIN = 1
-OP_ID_MAX = 23
+OP_ID_MAX = 21
 
 TEXT_WRAP = 250
 
@@ -103,8 +109,17 @@ ITEM_SUITE_MEMBERS = '__suite_members__'
 
 run_context_list = []
 
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
 
-images_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'images')
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
+
+images_path = resource_path("images")
 
 '''
 def get_default_icon(filename):
@@ -152,7 +167,7 @@ def get_wx_icon(exe, index):
 def pil_to_image(pil, alpha=True):
     """Convert PIL Image to wx.Image."""
     if alpha:
-        image = apply( wx.EmptyImage, pil.size )
+        image = wx.EmptyImage(*pil.size)
         image.SetData( pil.convert( "RGB").tostring() )
         image.SetAlphaData(pil.convert("RGBA").tostring()[3::4])
     else:
@@ -274,15 +289,6 @@ def init_image_list():
         bm = images['file']
     images['xlsx'] = image_list.Add(bm)
     '''
-
-def RealTimePlotting(RunCtrl):
-    # adding the Real-time plotting dialog
-    #wd = self.run_panel.Parent.entity.get_working_dir()
-    #m = wd.svp_ext.get('RealTimePlotting')
-    #if m is not None:
-    #    m.RealTimePlottingDialog(self)
-    print 'blablabla'
-
 
 def result_image(result):
     image = None
@@ -433,9 +439,11 @@ class EditSuiteDialog(wx.Dialog):
 
         members_box_sizer.Add(members_sizer, 1, wx.EXPAND|wx.LEFT|wx.TOP, 10)
         members_box_sizer.Add(members_avail_sizer, 1, wx.EXPAND|wx.RIGHT|wx.TOP, 10)
+
         sizer = wx.BoxSizer(wx.VERTICAL)
         window_sizer = wx.BoxSizer(wx.VERTICAL)
         params_panel = wx.Panel(window)
+
         self.params_panel = params_panel
         params_panel.panel_sizer = wx.GridBagSizer(hgap=30, vgap=0)
         params_panel.panel_sizer.SetEmptyCellSize((0,0))
@@ -577,7 +585,7 @@ class EditSuiteDialog(wx.Dialog):
                     if type(index_start) == str:
                         index_start = self.param_value(index_start)
                     if index_count is not None and index_start is not None:
-                        for i in xrange(index_start, index_start + index_count):
+                        for i in range(index_start, index_start + index_count):
                             for param in group.params:
                                 edit_param = self.edit_params.get(param.qname)
                                 if edit_param is None:
@@ -602,7 +610,7 @@ class EditSuiteDialog(wx.Dialog):
                                     edit_param.index_count = index_count
                                     edit_param.index_start = index_start
                                     self.edit_params[param.qname] = edit_param
-                                for i in xrange(index_start, index_start + index_count):
+                                for i in range(index_start, index_start + index_count):
                                     row = self.render_param(params_panel, param, index=i, row=row, pad=pad)
                         else:
                             row = self.render_param(params_panel, param, index=None, row=row, pad=pad)
@@ -740,11 +748,11 @@ class EditSuiteDialog(wx.Dialog):
 
     def update_params(self):
         self.params = {}
-        for name, p in self.edit_params.items():
+        for name, p in list(self.edit_params.items()):
             if script.param_is_active(self.suite.param_defs, name, self.param_value) is not None:
                 if len(p.indexed_entries) > 0:
                     value = {'index_count': p.param.index_count, 'index_start': p.param.index_start}
-                    for key, v in p.indexed_entries.iteritems():
+                    for key, v in list(p.indexed_entries.items()):
                         value[key] = p.param_value(index=key)
                     self.params[name] = value
                 else:
@@ -835,7 +843,7 @@ class EditSuiteDialog(wx.Dialog):
                 self.members_tree.SetItemPyData(item, name + entity.ext)
                 self.update_suite_members()
                 self.render(self.params_panel)
-            except Exception, e:
+            except Exception as e:
                 wx.MessageBox('Error: %s' % str(e), caption='Add error',
                               style=wx.OK | wx.ICON_ERROR)
 
@@ -892,7 +900,7 @@ class EditSuiteDialog(wx.Dialog):
                     self.members_tree.SelectItem(next)
                 self.update_suite_members()
                 self.render(self.params_panel)
-            except Exception, e:
+            except Exception as e:
                 raise UIError('Error creating member path: %s' % str(e))
 
     def add_entry(self, parent, entity):
@@ -934,7 +942,7 @@ class EditSuiteDialog(wx.Dialog):
                     self.members_button_down.Enable()
                 else:
                     self.members_button_down.Disable()
-            except Exception, e:
+            except Exception as e:
                 raise UIError('Error creating member path: %s' % str(e))
 
     def OnAvailSelectionChanged(self, event):
@@ -956,7 +964,7 @@ class EditSuiteDialog(wx.Dialog):
                     entity.entity_tree.SelectItem(entity.entity_tree.GetRootItem())
                     return
                 self.members_button_add.Enable()
-            except Exception, e:
+            except Exception as e:
                 raise UIError('Error creating member path: %s' % str(e))
 
     def OnAvailTreeCtrlButtonDown(self, event):
@@ -1183,7 +1191,7 @@ class EditTestDialog(wx.Dialog):
                 if type(index_start) == str:
                     index_start = self.param_value(index_start)
                 if index_count is not None and index_start is not None:
-                    for i in xrange(index_start, index_start + index_count):
+                    for i in range(index_start, index_start + index_count):
                         for param in group.params:
                             edit_param = self.edit_params.get(param.qname)
                             if edit_param is None:
@@ -1208,7 +1216,7 @@ class EditTestDialog(wx.Dialog):
                                 edit_param.index_count = index_count
                                 edit_param.index_start = index_start
                                 self.edit_params[param.qname] = edit_param
-                            for i in xrange(index_start, index_start + index_count):
+                            for i in range(index_start, index_start + index_count):
                                 row = self.render_param(params_panel, param, index=i, row=row, pad=pad)
                     else:
                         row = self.render_param(params_panel, param, index=None, row=row, pad=pad)
@@ -1344,11 +1352,11 @@ class EditTestDialog(wx.Dialog):
 
     def update_params(self):
         #### self.params = {}
-        for name, p in self.edit_params.items():
+        for name, p in list(self.edit_params.items()):
             if script.param_is_active(self.test_script.param_defs, name, self.param_value) is not None:
                 if p.index_count is not None:
                     value = {'index_count': p.index_count, 'index_start': p.index_start}
-                    for key, v in p.indexed_entries.iteritems():
+                    for key, v in list(p.indexed_entries.items()):
                         value[key] = p.param_value(index=key)
                     self.params[name] = value
                 else:
@@ -1431,7 +1439,7 @@ class NewTestDialog(wx.Dialog):
                 i = path.index(svp.SCRIPTS_DIR)
                 name = script.PATH_SEP.join(path[i+1:])
                 self.script_path.SetValue(name)
-            except Exception, e:
+            except Exception as e:
                 raise UIError('Error creating script path: %s' % str(e))
 
     def OnTreeCtrlLeftDown(self, event):
@@ -1541,11 +1549,11 @@ class EntityTree(treectrl.CustomTreeCtrl):
                         ext_menu = op[1]
                 if ext_menu is not None:
                     submenu, submenu_enabled = self.create_ext_menu(ext_menu)
-                    menu_item = menu.Append(wx.ID_ANY, item[1], submenu)
+                    menu_item = menu.AppendSubMenu(submenu, item[1])
                     menu_item.Enable(submenu_enabled)
                 elif item[3] is not None:
                     submenu, submenu_enabled = self.create_menu(item[3], ops)
-                    menu_item = menu.Append(item[0], item[1], submenu)
+                    menu_item = menu.AppendSubMenu(submenu, item[1])
                     menu_item.Enable(submenu_enabled)
                 else:
                     menu_item = menu.Append(item[0], item[1], item[2])
@@ -1565,7 +1573,7 @@ class EntityTree(treectrl.CustomTreeCtrl):
             if item[0]:
                 if item[2] is not None:
                     submenu, submenu_enabled = self.create_ext_menu(item[2])
-                    menu_item = menu.Append(wx.ID_ANY, item[0], submenu)
+                    menu_item = menu.AppendSubMenu(submenu, item[0])
                     menu_item.Enable(submenu_enabled)
                     if submenu_enabled:
                         enabled = True
@@ -1597,7 +1605,7 @@ class EntityTree(treectrl.CustomTreeCtrl):
             if item[1]:
                 if item[3] is not None:
                     submenu = self.create_popup_menu(item[3])
-                    menu_item = menu.Append(item[0], item[1], submenu)
+                    menu_item = menu.AppendSubMenu(submenu, item[1])
                 else:
                     menu_item = menu.Append(item[0], item[1], item[2])
                 # menu_item.Enable(False)
@@ -1663,7 +1671,7 @@ class EntityTree(treectrl.CustomTreeCtrl):
             try:
                 d.scan()
                 # self.scan_dir(d)
-            except Exception, e:
+            except Exception as e:
                 wx.MessageBox('Error: %s' % traceback.format_exc(), caption='Error', style=wx.OK | wx.ICON_ERROR)
 
     def clear_detail(self):
@@ -1690,7 +1698,7 @@ class EntityTree(treectrl.CustomTreeCtrl):
                 #entity_window.entity_detail.Layout()
                 # entity_window.entity_detail.Scroll(0, 0)
                 entity_window.entity_detail.FitInside()
-        except Exception, e:
+        except Exception as e:
             wx.MessageBox('Error: %s' % traceback.format_exc(), caption='Error', style=wx.OK | wx.ICON_ERROR)
 
     def OnShowPopup(self, event):
@@ -1822,15 +1830,15 @@ class EntityTreeEntry(object):
                 self.entity_tree.Delete(self.item)
                 self.parent.delete(self)
                 self.entity_tree.clear_detail()
-        except Exception, e:
+        except Exception as e:
             wx.MessageBox('Error deleting %s' % (str(e)), 'Delete Error', wx.OK | wx.ICON_ERROR)
 
     def op_run(self, event):
         dialog = RunDialog(self)
         dialog.CenterOnParent()
-        ###dialog.ShowModal()
+        ### dialog.ShowModal()
         dialog.Show()
-        ###dialog.Destroy()
+        ### dialog.Destroy()
         # self.get_working_dir().rescan()
 
         # self.entity_tree.entity_window.app_wx.process.stop()
@@ -2153,7 +2161,7 @@ class EntityTreeEntry(object):
                 if type(index_start) == str:
                     index_start = param_value(index_start)
                 if index_count is not None and index_start is not None:
-                    for i in xrange(index_start, index_start + index_count):
+                    for i in range(index_start, index_start + index_count):
                         for param in group.params:
                             row = self.render_param(info_panel, param_defs, param_value, param, index=i, row=row, pad=pad)
             else:
@@ -2166,7 +2174,7 @@ class EntityTreeEntry(object):
                         if type(index_start) == str:
                             index_start = param_value(index_start)
                         if index_count is not None and index_start is not None:
-                            for i in xrange(index_start, index_start + index_count):
+                            for i in range(index_start, index_start + index_count):
                                 row = self.render_param(info_panel, param_defs, param_value, param, index=i, row=row,
                                                         pad=pad)
                     else:
@@ -2292,7 +2300,7 @@ class Directory(EntityTreeEntry):
                 else:
                     wx.MessageBox('%s already exists in %s' % (name, self.name), 'New Directory Error',
                                   wx.OK | wx.ICON_ERROR)
-        except Exception, e:
+        except Exception as e:
             wx.MessageBox('Error adding new directory: %s' % (str(e)), 'New Directory Error', wx.OK | wx.ICON_ERROR)
 
     def op_new_suite(self, event):
@@ -2315,7 +2323,7 @@ class Directory(EntityTreeEntry):
             self.entity_tree.SelectItem(entry.item, select=True)
 
             entry.op_edit(entry)
-        except Exception, e:
+        except Exception as e:
             wx.MessageBox('Error creating suite: %s' % (str(e)), 'New Suite Error', wx.OK | wx.ICON_ERROR)
 
     def op_new_test(self, event):
@@ -2353,7 +2361,7 @@ class Directory(EntityTreeEntry):
                                       image=self.entity_tree.images['test'])
             self.entity_tree.SelectItem(entry.item, select=True)
             entry.op_edit(entry)
-        except Exception, e:
+        except Exception as e:
             raise
             ### wx.MessageBox('Error creating test: %s' % (str(e)), 'New Test Error', wx.OK | wx.ICON_ERROR)
 
@@ -2368,7 +2376,7 @@ class Directory(EntityTreeEntry):
                 self.entity_tree.Unselect()
                 self.entity_tree.Delete(self.item)
                 self.parent.delete(self)
-        except Exception, e:
+        except Exception as e:
             wx.MessageBox('Error deleting directory %s' % (str(e)), 'Delete Directory Error', wx.OK | wx.ICON_ERROR)
 
 class WorkingDirectory(Directory):
@@ -2424,7 +2432,7 @@ class WorkingDirectory(Directory):
         self.clear()
         try:
             files = os.listdir(os.path.join(self.name))
-        except Exception, e:
+        except Exception as e:
             self.error = str(e)
             return
 
@@ -2467,11 +2475,12 @@ class WorkingDirectory(Directory):
                 m_name = name[8:]
                 if m_name not in self.svp_ext:
                     try:
-                        m = imp.load_source(i_name, f)
+                        m = imp(i_name, f).load_module()
                         self.svp_ext[m_name] = m
-                        print 'Imported svp ext: %s %s %s\n%s' % (f, m_name, i_name, str(self.svp_ext))
-                    except Exception, e:
-                        print 'Error importing %s: %s' % (f, str(e))
+                        print('Imported svp ext: {} {} {}\n{}'.format(f, m_name, i_name, (self.svp_ext)))
+                    except Exception as e:
+                        print(f"Error importing {f}")
+                        print(f"Error message : {e}")
         files = glob.glob(os.path.join(d, '*'))
         for f in files:
             if os.path.isdir(f):
@@ -2498,14 +2507,14 @@ class ScriptsDirectory(Directory):
                         self.add_entry(name, ScriptEntry, entity_tree=self.entity_tree,
                                        image=self.entity_tree.images['script'])
                         # script.load_script(file_path, lib_path)
-                    except Exception, e:
+                    except Exception as e:
                         raise UIError('Script directory scan error: %s' % str(e))
                 else:
                     if os.path.isdir(file_path):
                         d = self.add_entry(f, ScriptDirectory, entity_tree=self.entity_tree,
                                            image=self.entity_tree.images['script_dir'])
                         d.scan()
-        except Exception, e:
+        except Exception as e:
             raise UIError('Error scanning directory %s: %s' % (path, str(e)))
 
 class ResultsDirectory(Directory):
@@ -2523,7 +2532,7 @@ class ResultsDirectory(Directory):
                     shutil.rmtree(f)
                     ### os.remove(f)
                 self.get_working_dir().rescan()
-        except Exception, e:
+        except Exception as e:
             wx.MessageBox('Error deleting directory %s contents' % (str(e)), 'Delete Directory Contents Error', wx.OK | wx.ICON_ERROR)
 
     def scan(self):
@@ -2546,9 +2555,9 @@ class ResultsDirectory(Directory):
                             result_entry.result.from_xml(filename=result_file)
                             result_entry.add_results(name)
 
-                        except Exception, e:
+                        except Exception as e:
                             raise UIError('Result directory scan error: %s' % str(e))
-        except Exception, e:
+        except Exception as e:
             raise UIError('Error scanning directory %s: %s' % (path, str(e)))
 
     def insert_results(self, results):
@@ -2581,7 +2590,7 @@ class ResultDirectoryEntry(EntityTreeEntry):
                 self.entity_tree.Unselect()
                 self.entity_tree.Delete(self.item)
                 self.parent.delete(self)
-        except Exception, e:
+        except Exception as e:
             wx.MessageBox('Error deleting result %s' % (str(e)), 'Delete Result Error', wx.OK | wx.ICON_ERROR)
 
     def op_open(self, evt, title='Open Result'):
@@ -2682,12 +2691,12 @@ class ResultEntry(EntityTreeEntry):
                 self.entity_tree.Unselect()
                 self.entity_tree.Delete(self.item)
                 self.parent.delete(self)
-        except Exception, e:
+        except Exception as e:
             wx.MessageBox('Error deleting result %s' % (str(e)), 'Delete Result Error', wx.OK | wx.ICON_ERROR)
 
     def op_open(self, evt, title='Open Result'):
         if self.ext == svp.CSV_EXT:
-            #frame = wxmplot.PlotFrame()
+            frame = wxmplot.PlotFrame()
             filename = os.path.join(self.working_dir_path(), svp.RESULTS_DIR, self.result_name, self.result.filename)
             f = open(filename, 'r')
             names = f.readline().split(',')
@@ -2707,14 +2716,14 @@ class ResultEntry(EntityTreeEntry):
                     try:
                         v = float(values[i])
                         value_arrays[i].append(v)
-                    except Exception, e:
+                    except Exception as e:
                         value_arrays[i].append('nan')
                         pass
 
             time_array = numpy.array(value_arrays[0])
             for i in range(1, columns):
                 value_array = numpy.array(value_arrays[i])
-                #frame.oplot(time_array, value_array, label=names[i])
+                frame.oplot(time_array, value_array, label=names[i])
 
             '''
             r = numpy.recfromcsv(filename, case_sensitive=True)
@@ -2733,8 +2742,8 @@ class ResultEntry(EntityTreeEntry):
             #            xlabel='x (mm)', ylabel='y1', ymin=-0.75, ymax=0.75)
             # pframe.oplot(x, y2, y2label='y2', side='right', ymin=0)
 
-            #frame.SetTitle(self.name)
-            #frame.Show()
+            frame.SetTitle(self.name)
+            frame.Show()
             # frame.ToggleWindowStyle(wx.STAY_ON_TOP)
         else:
             result_dir = os.path.join(self.working_dir_path(), svp.RESULTS_DIR, self.name)
@@ -2905,7 +2914,7 @@ class ResultEntry(EntityTreeEntry):
             y2 = 92 + 65*np.cos(x/16.) * np.exp(-x*x/7e3) + noise(size=n, scale=0.3)
             '''
 
-            #frame = wxmplot.PlotFrame()
+            frame = wxmplot.PlotFrame()
             filename = os.path.join(self.working_dir_path(), svp.RESULTS_DIR, self.name)
             f = open(filename, 'r')
             names = f.readline().split(',')
@@ -2925,14 +2934,14 @@ class ResultEntry(EntityTreeEntry):
                     try:
                         v = float(values[i])
                         value_arrays[i].append(v)
-                    except Exception, e:
+                    except Exception as e:
                         value_arrays[i].append('nan')
                         pass
 
             time_array = numpy.array(value_arrays[0])
             for i in range(1, columns):
                 value_array = numpy.array(value_arrays[i])
-                #frame.oplot(time_array, value_array, label=names[i])
+                frame.oplot(time_array, value_array, label=names[i])
 
             '''
             r = numpy.recfromcsv(filename, case_sensitive=True)
@@ -2951,9 +2960,9 @@ class ResultEntry(EntityTreeEntry):
             #            xlabel='x (mm)', ylabel='y1', ymin=-0.75, ymax=0.75)
             # pframe.oplot(x, y2, y2label='y2', side='right', ymin=0)
 
-            #frame.SetTitle(self.name)
-            #frame.Show()
-            #frame.ToggleWindowStyle(wx.STAY_ON_TOP)
+            frame.SetTitle(self.name)
+            frame.Show()
+            frame.ToggleWindowStyle(wx.STAY_ON_TOP)
 
 
 class ScriptDirectory(Directory):
@@ -2979,14 +2988,14 @@ class ScriptDirectory(Directory):
                         self.add_entry(name, ScriptEntry, entity_tree=self.entity_tree,
                                        image=self.entity_tree.images['script'])
                         # script.load_script(file_path, lib_path)
-                    except Exception, e:
+                    except Exception as e:
                         raise UIError('Script directory scan error: %s' % str(e))
                 else:
                     if os.path.isdir(file_path):
                         d = self.add_entry(f, ScriptDirectory, entity_tree=self.entity_tree,
                                            image=self.entity_tree.images['script_dir'])
                         d.scan()
-        except Exception, e:
+        except Exception as e:
             raise UIError('Error scanning directory %s: %s' % (path, str(e)))
 
 class SuitesDirectory(Directory):
@@ -3019,10 +3028,10 @@ class SuitesDirectory(Directory):
                             d = self.add_entry(f, SuiteDirectory, entity_tree=self.entity_tree,
                                                image=self.entity_tree.images['suite_dir'])
                             d.scan()
-                except Exception, e:
+                except Exception as e:
                     pass
                     # raise UIError('Error scanning directory %s: %s' % (path, str(e)))
-        except Exception, e:
+        except Exception as e:
             raise UIError('Error scanning directory %s: %s' % (path, str(e)))
 
 class SuiteDirectory(Directory):
@@ -3060,10 +3069,10 @@ class SuiteDirectory(Directory):
                             d = self.add_entry(f, SuiteDirectory, entity_tree=self.entity_tree,
                                                image=self.entity_tree.images['suite_dir'])
                             d.scan()
-                except Exception, e:
+                except Exception as e:
                     pass
                     # raise UIError('Error scanning directory %s: %s' % (path, str(e)))
-        except Exception, e:
+        except Exception as e:
             raise UIError('Error scanning directory %s: %s' % (path, str(e)))
 
 class TestsDirectory(Directory):
@@ -3092,7 +3101,7 @@ class TestsDirectory(Directory):
                                            image=self.entity_tree.images['test_dir'])
                         # d = directory.add_dir(f, TestDirectory, entity_tree=self, image=images['test_dir'])
                         d.scan()
-        except Exception, e:
+        except Exception as e:
             raise UIError('Error scanning directory %s: %s' % (path, str(e)))
 
 def prompt_name(text, title, default):
@@ -3139,7 +3148,7 @@ class TestDirectory(Directory):
                         # d = directory.add_dir(f, TestDirectory, entity_tree=self, image=images['test_dir'])
                         # d.expanded = d.get_working_dir().is_expanded(self.working_dir_relative_name())
                         d.scan()
-        except Exception, e:
+        except Exception as e:
             raise UIError('Error scanning directory %s: %s' % (path, str(e)))
 
 class ScriptEntry(EntityTreeEntry):
@@ -3174,7 +3183,7 @@ class ScriptEntry(EntityTreeEntry):
                             #     working_dir.update_expanded(rel_path, False)
                             #     working_dir.update_expanded(script.PATH_SEP.join([svp.SUITES_DIR, dlg_path]), True)
 
-                        except Exception, e:
+                        except Exception as e:
                             wx.MessageBox('Error moving script %s: %s.' % (dlg_path, str(e)),
                                           caption='Move error', style=wx.OK | wx.ICON_ERROR)
                     else:
@@ -3227,7 +3236,7 @@ class ScriptEntry(EntityTreeEntry):
                                            image=self.entity_tree.images['test_dir'])
                         # d = directory.add_dir(f, TestDirectory, entity_tree=self, image=images['test_dir'])
                         d.scan()
-        except Exception, e:
+        except Exception as e:
             raise UIError('Error scanning directory %s: %s' % (path, str(e)))
 
     def render_info(self, parent):
@@ -3310,7 +3319,7 @@ class ScriptEntry(EntityTreeEntry):
                 if type(index_start) == str:
                     index_start = param_value(index_start)
                 if index_count is not None and index_start is not None:
-                    for i in xrange(index_start, index_start + index_count):
+                    for i in range(index_start, index_start + index_count):
                         for param in group.params:
                             row = self.render_param(info_panel, param_defs, param_value, param, index=i, row=row,
                                                     pad=pad)
@@ -3324,7 +3333,7 @@ class ScriptEntry(EntityTreeEntry):
                         if type(index_start) == str:
                             index_start = param_value(index_start)
                         if index_count is not None and index_start is not None:
-                            for i in xrange(index_start, index_start + index_count):
+                            for i in range(index_start, index_start + index_count):
                                 row = self.render_param(info_panel, param_defs, param_value, param, index=i, row=row,
                                                         pad=pad)
                     else:
@@ -3395,7 +3404,7 @@ class SuiteEntry(EntityTreeEntry):
                                 suite = svp.Suite(filename=new_full_name)
                                 suite.name = new_name
                                 suite.to_xml_file()
-                        except Exception, e:
+                        except Exception as e:
                             wx.MessageBox('Error copying suite %s: %s.' % (dlg_path, str(e)),
                                           caption='Copy error', style=wx.OK | wx.ICON_ERROR)
                     else:
@@ -3437,7 +3446,7 @@ class SuiteEntry(EntityTreeEntry):
                             #     working_dir.update_expanded(rel_path, False)
                             #     working_dir.update_expanded(script.PATH_SEP.join([svp.SUITES_DIR, dlg_path]), True)
 
-                        except Exception, e:
+                        except Exception as e:
                             wx.MessageBox('Error moving suite %s: %s.' % (dlg_path, str(e)),
                                           caption='Move error', style=wx.OK | wx.ICON_ERROR)
                     else:
@@ -3473,7 +3482,7 @@ class SuiteEntry(EntityTreeEntry):
                 rel_path = self.relative_name() + self.ext
                 svp.member_update(suites_path, rel_path, None)
                 self.get_working_dir().rescan()
-        except Exception, e:
+        except Exception as e:
             wx.MessageBox('Error deleting %s' % (str(e)), 'Delete Error', wx.OK | wx.ICON_ERROR)
 
     def op_edit(self, event):
@@ -3501,7 +3510,7 @@ class SuiteEntry(EntityTreeEntry):
 
                 self.get_working_dir().rescan()
                 # self.entity_tree.render_detail(self)
-        except Exception, e:
+        except Exception as e:
             wx.MessageBox('Error: %s' % traceback.format_exc(), caption='Error', style=wx.OK | wx.ICON_ERROR)
             if dialog is not None:
                 dialog.Destroy()
@@ -3638,7 +3647,7 @@ class TestEntry(EntityTreeEntry):
                                 config = script.ScriptConfig(filename=new_full_name)
                                 config.name = new_name
                                 config.to_xml_file()
-                        except Exception, e:
+                        except Exception as e:
                             wx.MessageBox('Error copying test %s: %s.' % (dlg_path, str(e)),
                                           caption='Copy error', style=wx.OK | wx.ICON_ERROR)
                     else:
@@ -3681,7 +3690,7 @@ class TestEntry(EntityTreeEntry):
                             #     working_dir.update_expanded(rel_path, False)
                             #     working_dir.update_expanded(script.PATH_SEP.join([svp.SUITES_DIR, dlg_path]), True)
 
-                        except Exception, e:
+                        except Exception as e:
                             wx.MessageBox('Error moving test %s: %s.' % (dlg_path, str(e)),
                                           caption='Move error', style=wx.OK | wx.ICON_ERROR)
                     else:
@@ -3717,7 +3726,7 @@ class TestEntry(EntityTreeEntry):
                 rel_path = self.relative_name() + self.ext
                 svp.member_update(suites_path, rel_path, None)
                 self.get_working_dir().rescan()
-        except Exception, e:
+        except Exception as e:
             wx.MessageBox('Error deleting %s' % (str(e)), 'Delete Error', wx.OK | wx.ICON_ERROR)
 
     def op_edit(self, event):
@@ -3736,7 +3745,7 @@ class TestEntry(EntityTreeEntry):
                 script_config.to_xml_file(filename=path)
                 # re-render detail info after config update
                 self.entity_tree.render_detail(self)
-        except Exception, e:
+        except Exception as e:
             wx.MessageBox('Error: %s' % traceback.format_exc(), caption='Error', style=wx.OK | wx.ICON_ERROR)
             if dialog is not None:
                 dialog.Destroy()
@@ -3752,7 +3761,7 @@ class TestEntry(EntityTreeEntry):
     def load(self):
         try:
             self.test_config = script.ScriptConfig(filename=self.absolute_filename())
-        except Exception, e:
+        except Exception as e:
             raise UIError('Error loading test configuration: %s' % str(e))
 
         working_dir = self.working_dir_path()
@@ -3787,7 +3796,6 @@ class TestEntry(EntityTreeEntry):
         title.SetBackgroundColour('white')
         logo_sizer = wx.BoxSizer(wx.VERTICAL)
         logo_h_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        print(title,wx.Bitmap(os.path.join(images_path, 'test_32.gif')))
         bitmap = wx.StaticBitmap(parent=title, bitmap=wx.Bitmap(os.path.join(images_path, 'test_32.gif')))
         text = wx.StaticText(title, -1, self.name.split('.')[0])
         text.SetFont(wx.Font(16, wx.DEFAULT, wx.NORMAL, wx.NORMAL))
@@ -3974,7 +3982,7 @@ class SuiteTestEntry(EntityTreeEntry):
     def load(self):
         try:
             self.test_config = script.ScriptConfig(filename=self.absolute_filename())
-        except Exception, e:
+        except Exception as e:
             raise UIError('Error loading test configuration: %s' % str(e))
 
         working_dir = self.working_dir_path()
@@ -3999,7 +4007,7 @@ class SuiteTestEntry(EntityTreeEntry):
         info_panel.Hide()
 
         info_panel.panel_sizer = wx.GridBagSizer(hgap=30, vgap=0)
-        info_panel.panel_sizer.SetEmptyCellSize((0, 0))
+        info_panel.panel_sizer.SetEmptyCellSize((0,0))
         info_panel.SetBackgroundColour('white')
 
         title = wx.Panel(info_panel, -1)
@@ -4086,6 +4094,848 @@ class AppWx(app.App):
         app.App.state_update(self)
 '''
 
+class RtpPrefPanel(wx.Panel):
+    def __init__(self, parent, entity, title=None):
+        wx.Panel.__init__(self, parent)
+        self.parent = parent
+        self.entity = entity
+
+
+class RtppMainTab(wx.Panel):
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent)
+        self.parent = parent
+
+        self.main_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+        control_sizer = wx.BoxSizer(wx.VERTICAL)
+
+        self.display_control_buttons_sizer = wx.BoxSizer(wx.VERTICAL)
+
+        self.MainControlsSetup(control_sizer)
+
+        self.main_sizer.Add(control_sizer, 1, wx.ALL | wx.SHAPED)
+
+        static_line_main = wx.StaticLine(self, style=wx.LI_VERTICAL)
+        self.main_sizer.Add(static_line_main, 0, wx.EXPAND)
+
+        display_title = wx.StaticText(self, label='Real-time Plotting Plot Layout')
+        self.display_control_buttons_sizer.Add(display_title, 0, wx.ALIGN_CENTER_HORIZONTAL)
+        self.display_control_buttons_sizer.Add(wx.StaticLine(self, style=wx.LI_HORIZONTAL), 0, wx.EXPAND)
+
+        self.display_sizer = self.DisplaySetUp()
+        self.display_control_buttons_sizer.Add(self.display_sizer, 2, wx.EXPAND)
+
+        self.row_text.Bind(wx.EVT_TEXT_ENTER, self.DisplayUpdate)
+        self.column_text.Bind(wx.EVT_TEXT_ENTER, self.DisplayUpdate)
+
+        static_line_dcb_1 = wx.StaticLine(self, style=wx.LI_HORIZONTAL)
+        self.display_control_buttons_sizer.Add(static_line_dcb_1, 0, wx.EXPAND)
+
+        controls_under_display_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+        controls_und_dis_1 = wx.BoxSizer(wx.VERTICAL)
+        control2 = wx.StaticText(self, label='CONTROL1')
+        controls_und_dis_1.Add(control2, 0, wx.EXPAND)
+        controls_under_display_sizer.Add(controls_und_dis_1, 1, wx.EXPAND | wx.ALIGN_LEFT)
+
+        static_line_cud_1 = wx.StaticLine(self, style= wx.LI_VERTICAL)
+        controls_under_display_sizer.Add(static_line_cud_1, 0, wx.EXPAND)
+
+        controls_und_dis_2 = wx.BoxSizer(wx.VERTICAL)
+        control3 = wx.StaticText(self, label='CONTROL2')
+        controls_und_dis_2.Add(control3, 0, wx.EXPAND)
+        controls_under_display_sizer.Add(controls_und_dis_2, 1, wx.EXPAND | wx.ALIGN_CENTER_HORIZONTAL)
+
+        static_line_cud_2 = wx.StaticLine(self, style=wx.LI_VERTICAL)
+        controls_under_display_sizer.Add(static_line_cud_2, 0, wx.EXPAND)
+
+        controls_und_dis_3 = wx.BoxSizer(wx.VERTICAL)
+        control4 = wx.StaticText(self, label='CONTROL3')
+        controls_und_dis_3.Add(control4, 0, wx.EXPAND)
+        controls_under_display_sizer.Add(controls_und_dis_3, 1, wx.EXPAND | wx.ALIGN_RIGHT)
+
+        self.display_control_buttons_sizer.Add(controls_under_display_sizer, 1, wx.EXPAND)
+
+        self.main_sizer.Add(self.display_control_buttons_sizer, 2, wx.EXPAND)
+
+        self.SetSizer(self.main_sizer)
+
+
+    def MainControlsSetup(self, control_sizer=None):
+
+        control1 = wx.StaticText(self, label='General Parameters')
+        control_sizer.Add(control1, 0, wx.EXPAND | wx.ALL, 5)
+
+        rtp_mode_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        rtp_mode_static = wx.StaticText(self, label='Real-Time Plotting mode : ')
+        rtp_mode_combo = wx.ComboBox(self, value='Enabled' , choices=['Enabled', 'Disabled'])
+        rtp_mode_sizer.Add(rtp_mode_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        rtp_mode_sizer.Add(rtp_mode_combo, 0, wx.ALIGN_LEFT)
+        control_sizer.Add(rtp_mode_sizer, 0, wx.ALL, 5)
+
+        standard_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        standard_static = wx.StaticText(self, label='Standard tested : ')
+        standard_combo = wx.ComboBox(self, value='1547.1', choices=['1547.1', 'DR_AS_NZS_4777.2'])
+        standard_sizer.Add(standard_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        standard_sizer.Add(standard_combo, 0, wx.ALIGN_LEFT)
+        control_sizer.Add(standard_sizer, 0, wx.ALL, 5)
+
+        row_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        row_static = wx.StaticText(self, label='Row : ')
+        self.row_text = wx.TextCtrl(self, value='2', style=wx.TE_PROCESS_ENTER, size=(20, -1))
+        row_sizer.Add(row_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        row_sizer.Add(self.row_text, 0, wx.ALIGN_LEFT)
+        control_sizer.Add(row_sizer, 0, wx.ALL, 5)
+
+        column_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        column_static = wx.StaticText(self, label='Column : ')
+        self.column_text = wx.TextCtrl(self, value='1', style=wx.TE_PROCESS_ENTER, size=(20, -1))
+        column_sizer.Add(column_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        column_sizer.Add(self.column_text, 0, wx.ALIGN_LEFT)
+        control_sizer.Add(column_sizer, 0, wx.ALL, 5)
+
+        self.number_of_other_tab = int(self.column_text.GetValue()) * int(self.row_text.GetValue())
+
+
+    def DisplayUpdate(self, evt):
+        new_disp_sizer = self.DisplaySetUp()
+        self.display_control_buttons_sizer.Hide(self.display_sizer)
+        self.display_control_buttons_sizer.Remove(self.display_sizer)
+        self.display_control_buttons_sizer.Insert(2, new_disp_sizer, 2, wx.EXPAND)
+        self.display_sizer = new_disp_sizer
+        self.Layout()
+        self.number_of_other_tab = int(self.column_text.GetValue()) * int(self.row_text.GetValue())
+        self.GetParent().GetParent().RtppUpdateOtherTab()
+        self.Update_Graph_titles()
+
+    def DisplaySetUp(self):
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        rows = int(self.row_text.GetValue())
+        columns = int(self.column_text.GetValue())
+        row_sizers = []
+        column_sizers = []
+        self.graph_type = [[]]
+        for row in range(0, rows):
+            row_sizers.append(wx.BoxSizer(wx.HORIZONTAL))
+
+            if row > 0:
+                sizer.Add(wx.StaticLine(self, style=wx.LI_HORIZONTAL), 0, wx.EXPAND)
+                self.graph_type.append([])
+
+            for column in range(0, columns):
+                column_sizers.append(wx.BoxSizer(wx.VERTICAL))
+                self.graph_type[row].append(wx.StaticText(self))
+                column_sizers[column + (columns*row)].Add(self.graph_type[row][column],
+                                                          1, wx.ALIGN_CENTER)
+                if column > 0:
+                    row_sizers[row].Add(wx.StaticLine(self, style=wx.LI_VERTICAL), 0, wx.EXPAND)
+                row_sizers[row].Add(column_sizers[column + (columns*row)], 1, wx.ALIGN_CENTER)
+
+            sizer.Add(row_sizers[row], 1, wx.EXPAND)
+        return sizer
+
+    def Update_Graph_titles(self):
+        rows = int(self.row_text.GetValue())
+        columns = int(self.column_text.GetValue())
+        for row in range(0, rows):
+            for column in range(0, columns):
+                self.graph_type[row][column]\
+                    .SetLabel(self.GetParent().GetPage(row*(columns) + column + 1).title_text.GetValue())
+
+
+class RtppOtherTab(wx.Panel):
+    def __init__(self, parent):
+        wx.Panel.__init__(self, parent)
+        self.title = 'Tab'
+        self.row = '1'
+        self.column = '1'
+        self.plot_type = 'Disabled'
+        self.parent = parent
+
+        self.main_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+        self.control_sizer = wx.BoxSizer(wx.VERTICAL)
+
+        self.display_control_buttons_sizer = wx.BoxSizer(wx.VERTICAL)
+
+        self.MainControlsSetup()
+
+        self.main_sizer.Add(self.control_sizer, 1, wx.EXPAND)
+
+        self.Initial_Disabled_tab_config()
+
+        self.plot_type_combo.Bind(wx.EVT_COMBOBOX_CLOSEUP, self.Update_tab_plot_type_config)
+
+        self.SetSizer(self.main_sizer)
+
+    def MainControlsSetup(self):
+
+        parameters = wx.StaticText(self, label=self.title + ' Parameters :')
+        self.control_sizer.Add(parameters, 0, wx.EXPAND | wx.ALL, 5)
+
+        title_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        title_static = wx.StaticText(self, label='Plot title : ')
+        self.title_text = wx.TextCtrl(self, value='Tab', style=wx.TE_PROCESS_ENTER)
+        self.title_text.Bind(wx.EVT_TEXT_ENTER, self.title_update_enter)
+        title_sizer.Add(title_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        title_sizer.Add(self.title_text, 0, wx.ALIGN_LEFT)
+        self.control_sizer.Add(title_sizer, 0, wx.ALL, 5)
+
+        row_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        row_static = wx.StaticText(self, label='Row : ')
+        self.row_text = wx.StaticText(self, label=self.row)
+        row_sizer.Add(row_static, 0)
+        row_sizer.Add(self.row_text,0)
+        self.control_sizer.Add(row_sizer, 0, wx.ALL, 5)
+
+        column_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        column_static = wx.StaticText(self, label='Column : ')
+        self.column_text = wx.StaticText(self, label=self.column)
+        column_sizer.Add(column_static, 0)
+        column_sizer.Add(self.column_text, 0)
+        self.control_sizer.Add(column_sizer, 0, wx.ALL, 5)
+
+        plot_type_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        plot_type_static = wx.StaticText(self, label='Type of plot : ')
+        self.plot_type_combo = wx.ComboBox(self, value='Disabled', choices=['XY', 'Time-based', 'CPF', 'Disabled'])
+        plot_type_sizer.Add(plot_type_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        plot_type_sizer.Add(self.plot_type_combo, 0, wx.ALIGN_LEFT)
+        self.control_sizer.Add(plot_type_sizer, 0, wx.ALL, 5)
+
+    def title_update_enter(self, evt):
+        self.parent.SetPageText(self.parent.FindPage(self.parent.GetCurrentPage()), self.title_text.GetValue())
+        self.parent.GetPage(0).graph_type[int(self.row) - 1][int(self.column) - 1].SetLabel(self.title_text.GetValue())
+        self.display_Text.SetLabel(self.title_text.GetValue())
+        self.title = self.title_text.GetValue()
+
+    def Base_update_tab_config(self):
+
+        self.main_sizer.Hide(self.control_sizer)
+        self.main_sizer.Remove(self.control_sizer)
+        self.control_sizer = wx.BoxSizer(wx.VERTICAL)
+
+        self.main_sizer.Hide(self.display_control_buttons_sizer)
+        self.main_sizer.Remove(self.display_control_buttons_sizer)
+        self.display_control_buttons_sizer = wx.BoxSizer(wx.VERTICAL)
+
+        self.main_sizer.Hide(self.static_line_main)
+        self.static_line_main.Destroy()
+
+        parameters = wx.StaticText(self, label=self.title + ' Parameters :')
+        self.control_sizer.Add(parameters, 0, wx.EXPAND | wx.ALL, 5)
+
+        title_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        title_sizer.Add(wx.StaticText(self, label='Plot title : '), 1, wx.ALIGN_CENTER_VERTICAL)
+        self.title_text = wx.TextCtrl(self, value=self.title, style=wx.TE_PROCESS_ENTER)
+        self.title_text.Bind(wx.EVT_TEXT_ENTER, self.title_update_enter)
+        title_sizer.Add(self.title_text, 0, wx.ALIGN_LEFT)
+        self.control_sizer.Add(title_sizer, 0, wx.ALL, 5)
+
+        row_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        row_sizer.Add(wx.StaticText(self, label='Row : '), 0)
+        self.row_text = wx.StaticText(self, label=self.row)
+        row_sizer.Add(self.row_text, 0)
+        self.control_sizer.Add(row_sizer, 0, wx.ALL, 5)
+
+        column_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        column_sizer.Add(wx.StaticText(self, label='Column : '), 0)
+        self.column_text = wx.StaticText(self, label=self.column)
+        column_sizer.Add(self.column_text, 0)
+        self.control_sizer.Add(column_sizer, 0, wx.ALL, 5)
+
+        plot_type_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        plot_type_sizer.Add(wx.StaticText(self, label='Type of plot : '), 1, wx.ALIGN_CENTER_VERTICAL)
+        self.plot_type_combo = wx.ComboBox(self, value=self.plot_type, choices=['XY', 'Time-based', 'CPF', 'Disabled'])
+        plot_type_sizer.Add(self.plot_type_combo, 0, wx.ALIGN_LEFT)
+        self.control_sizer.Add(plot_type_sizer, 0, wx.ALL, 5)
+
+    def Update_Disabled_plot_type_config(self):
+        self.Base_update_tab_config()
+
+        self.main_sizer.Add(self.control_sizer, 1, wx.EXPAND)
+
+        self.Initial_Disabled_tab_config()
+
+        self.plot_type_combo.Bind(wx.EVT_COMBOBOX_CLOSEUP, self.Update_tab_plot_type_config)
+
+        self.Layout()
+        self.GetParent().GetParent().sizer.Layout()
+
+    def Update_XY_plot_type_config(self):
+
+        self.parameters = {}
+        self.Base_update_tab_config()
+
+        x_value_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        x_value_static = wx.StaticText(self, label='X axis value : ')
+        self.x_value_combo = wx.ComboBox(self, value='V', choices=['V', 'I', 'P', 'Q', 'S', 'F'])
+        x_value_sizer.Add(x_value_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        x_value_sizer.Add(self.x_value_combo, 0, wx.ALIGN_LEFT)
+        self.control_sizer.Add(x_value_sizer, 0, wx.ALL, 5)
+
+        y_value_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        y_value_static = wx.StaticText(self, label='Y axis value : ')
+        self.y_value_combo = wx.ComboBox(self, value='Q', choices=['V', 'I', 'P', 'Q', 'S', 'F'])
+        y_value_sizer.Add(y_value_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        y_value_sizer.Add(self.y_value_combo, 0, wx.ALIGN_LEFT)
+        self.control_sizer.Add(y_value_sizer, 0, wx.ALL, 5)
+
+        display_mode_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        display_mode_static = wx.StaticText(self, label='Display mode : ')
+        self.display_mode_combo = wx.ComboBox(self, value='Refresh', choices=['Refresh', 'Superposition'])
+        display_mode_sizer.Add(display_mode_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        display_mode_sizer.Add(self.display_mode_combo, 0, wx.ALIGN_LEFT)
+        self.control_sizer.Add(display_mode_sizer, 0, wx.ALL, 5)
+
+        self.main_sizer.Add(self.control_sizer, 1, wx.EXPAND)
+
+        self.static_line_main = wx.StaticLine(self, style=wx.LI_VERTICAL)
+        self.main_sizer.Add(self.static_line_main, 0, wx.EXPAND)
+
+        self.display_Text = wx.StaticText(self, label=self.title_text.GetValue())
+        self.display_control_buttons_sizer.Add(self.display_Text, 2, wx.EXPAND)
+
+        self.display = RTP.Preference_canvas(self)
+        self.display_control_buttons_sizer.Add(self.display, 2, wx.EXPAND)
+
+        static_line_dcb_1 = wx.StaticLine(self, style=wx.LI_HORIZONTAL)
+        self.display_control_buttons_sizer.Add(static_line_dcb_1, 0, wx.EXPAND)
+
+        controls_under_display_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+        general_control_sizer = wx.BoxSizer(wx.VERTICAL)
+        self.XY_General_setup(general_control_sizer)
+        controls_under_display_sizer.Add(general_control_sizer, 1, wx.EXPAND | wx.ALIGN_LEFT)
+
+        static_line_cud_1 = wx.StaticLine(self, style=wx.LI_VERTICAL)
+        controls_under_display_sizer.Add(static_line_cud_1, 0, wx.EXPAND)
+
+        x_control_sizer = wx.BoxSizer(wx.VERTICAL)
+        self.XY_X_setup(x_control_sizer)
+        controls_under_display_sizer.Add(x_control_sizer, 1, wx.EXPAND | wx.ALIGN_CENTER_HORIZONTAL)
+
+        static_line_cud_2 = wx.StaticLine(self, style=wx.LI_VERTICAL)
+        controls_under_display_sizer.Add(static_line_cud_2, 0, wx.EXPAND)
+
+        y_control_sizer = wx.BoxSizer(wx.VERTICAL)
+        self.XY_Y_setup(y_control_sizer)
+        controls_under_display_sizer.Add(y_control_sizer, 1, wx.EXPAND | wx.ALIGN_RIGHT)
+
+        self.display_control_buttons_sizer.Add(controls_under_display_sizer, 1, wx.EXPAND)
+
+        self.main_sizer.Add(self.display_control_buttons_sizer, 2, wx.EXPAND)
+
+        self.plot_type_combo.Bind(wx.EVT_COMBOBOX_CLOSEUP, self.Update_tab_plot_type_config)
+
+        self.display.Create_Figure(type=self.plot_type, parameters=self.parameters)
+
+        self.Layout()
+        self.GetParent().GetParent().sizer.Layout()
+
+    def XY_General_setup(self, general_control_sizer):
+        general_control_sizer.Add(wx.StaticText(self, label='General Plot Setting :'))
+
+        grid_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        grid_static = wx.StaticText(self, label='With Grid : ')
+        self.grid_checkbox = wx.CheckBox(self)
+        self.grid_checkbox.SetValue(True)
+        self.parameters['Grid'] = self.grid_checkbox.GetValue()
+        grid_sizer.Add(grid_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        grid_sizer.Add(self.grid_checkbox, 0, wx.ALIGN_LEFT)
+        general_control_sizer.Add(grid_sizer, 0, wx.ALL, 5)
+
+        color_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        color_static = wx.StaticText(self, label='line Color : ')
+        self.color_combo = wx.ComboBox(self, value='Black', choices=['Black', 'Red', 'Blue', 'Green', 'Yellow'])
+        self.parameters['line Color'] = self.color_combo.GetValue()
+        color_sizer.Add(color_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        color_sizer.Add(self.color_combo, 0, wx.ALIGN_LEFT)
+        general_control_sizer.Add(color_sizer, 0, wx.ALL, 5)
+
+        overlay_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        overlay_static = wx.StaticText(self, label='With Overlay : ')
+        self.overlay_checkbox = wx.CheckBox(self)
+        self.overlay_checkbox.SetValue(True)
+        self.parameters['Overlay'] = self.overlay_checkbox.GetValue()
+        overlay_sizer.Add(overlay_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        overlay_sizer.Add(self.overlay_checkbox, 0, wx.ALIGN_LEFT)
+        general_control_sizer.Add(overlay_sizer, 0, wx.ALL, 5)
+
+        overlay_color_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        overlay_color_static = wx.StaticText(self, label='Overlay Color : ')
+        self.overlay_color_combo = wx.ComboBox(self, value='Red',
+                                                  choices=['Black', 'Red', 'Blue', 'Green', 'Yellow'])
+        self.parameters['Overlay Color'] = self.overlay_color_combo.GetValue()
+        overlay_color_sizer.Add(overlay_color_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        overlay_color_sizer.Add(self.overlay_color_combo, 0, wx.ALIGN_LEFT)
+        general_control_sizer.Add(overlay_color_sizer, 0, wx.ALL, 5)
+
+    def XY_X_setup(self, x_control_sizer):
+
+        x_control_sizer.Add(wx.StaticText(self, label='X value Plot setting :'))
+
+        x_axis_title_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        x_axis_title_static = wx.StaticText(self, label='x axis title : ')
+        self.x_axis_title_text = wx.TextCtrl(self, value='X axis')
+        self.parameters['x axis title'] = self.x_axis_title_text.GetValue()
+        x_axis_title_sizer.Add(x_axis_title_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        x_axis_title_sizer.Add(self.x_axis_title_text, 0, wx.ALIGN_LEFT)
+        x_control_sizer.Add(x_axis_title_sizer, 0, wx.ALL, 5)
+
+
+
+    def XY_Y_setup(self, y_control_sizer):
+        y_control_sizer.Add(wx.StaticText(self, label='Y value Plot setting :'))
+
+        y_axis_title_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        y_axis_title_static = wx.StaticText(self, label='y axis title : ')
+        self.y_axis_title_text = wx.TextCtrl(self, value='y axis')
+        self.parameters['y axis title'] = self.y_axis_title_text.GetValue()
+        y_axis_title_sizer.Add(y_axis_title_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        y_axis_title_sizer.Add(self.y_axis_title_text, 0, wx.ALIGN_LEFT)
+        y_control_sizer.Add(y_axis_title_sizer, 0, wx.ALL, 5)
+
+    def Update_Time_based_plot_type_config(self):
+
+        self.parameters = {}
+        self.Base_update_tab_config()
+
+        x_value_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        x_value_static = wx.StaticText(self, label='x axis value : ')
+        self.x_value_static_Text = wx.StaticText(self, label='Time')
+        x_value_sizer.Add(x_value_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        x_value_sizer.Add(self.x_value_static_Text, 0, wx.ALIGN_LEFT)
+        self.control_sizer.Add(x_value_sizer, 0, wx.ALL, 5)
+
+        y1_value_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        y1_value_static = wx.StaticText(self, label='y1 axis value : ')
+        self.y1_value_combo = wx.ComboBox(self, value='V', choices=['V', 'I', 'P', 'Q', 'S'])
+        y1_value_sizer.Add(y1_value_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        y1_value_sizer.Add(self.y1_value_combo, 0, wx.ALIGN_LEFT)
+        self.control_sizer.Add(y1_value_sizer, 0, wx.ALL, 5)
+
+        y2_value_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        y2_value_static = wx.StaticText(self, label='y2 axis value : ')
+        self.y2_value_combo = wx.ComboBox(self, value='Disabled', choices=['V', 'I', 'P', 'Q', 'S', 'Disabled'])
+        self.y2_value_combo.Bind(wx.EVT_COMBOBOX_CLOSEUP, self.Time_based_Access_y2_control)
+        self.parameters['y2_axe'] = self.y2_value_combo.GetValue()
+        y2_value_sizer.Add(y2_value_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        y2_value_sizer.Add(self.y2_value_combo, 0, wx.ALIGN_LEFT)
+        self.control_sizer.Add(y2_value_sizer, 0, wx.ALL, 5)
+
+        self.main_sizer.Add(self.control_sizer, 1, wx.EXPAND)
+
+        self.static_line_main = wx.StaticLine(self, style=wx.LI_VERTICAL)
+        self.main_sizer.Add(self.static_line_main, 0, wx.EXPAND)
+
+        self.display_Text = wx.StaticText(self, label=self.title_text.GetValue())
+        self.display_control_buttons_sizer.Add(self.display_Text, 2, wx.EXPAND)
+
+        self.display = RTP.Preference_canvas(self)
+        self.display_control_buttons_sizer.Add(self.display, 2, wx.EXPAND)
+
+        static_line_dcb_1 = wx.StaticLine(self, style=wx.LI_HORIZONTAL)
+        self.display_control_buttons_sizer.Add(static_line_dcb_1, 0, wx.EXPAND)
+
+        controls_under_display_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+        gen_x_control_sizer = wx.BoxSizer(wx.VERTICAL)
+        self.Time_based_General_and_x_control_SetUp(gen_x_control_sizer)
+        controls_under_display_sizer.Add(gen_x_control_sizer, 1, wx.EXPAND | wx.ALIGN_LEFT)
+
+        static_line_cud_1 = wx.StaticLine(self, style= wx.LI_VERTICAL)
+        controls_under_display_sizer.Add(static_line_cud_1, 0, wx.EXPAND)
+
+        y1_control_sizer = wx.BoxSizer(wx.VERTICAL)
+        self.Time_based_Y1_control_SetUp(y1_control_sizer)
+        controls_under_display_sizer.Add(y1_control_sizer, 1, wx.EXPAND | wx.ALIGN_CENTER_HORIZONTAL)
+
+        static_line_cud_2 = wx.StaticLine(self, style=wx.LI_VERTICAL)
+        controls_under_display_sizer.Add(static_line_cud_2, 0, wx.EXPAND)
+
+        y2_control_sizer = wx.BoxSizer(wx.VERTICAL)
+        self.Time_based_Y2_control_SetUp(y2_control_sizer)
+        controls_under_display_sizer.Add(y2_control_sizer, 1, wx.EXPAND | wx.ALIGN_RIGHT)
+
+        self.display_control_buttons_sizer.Add(controls_under_display_sizer, 1, wx.EXPAND)
+
+        self.main_sizer.Add(self.display_control_buttons_sizer, 2, wx.EXPAND)
+
+        self.plot_type_combo.Bind(wx.EVT_COMBOBOX_CLOSEUP, self.Update_tab_plot_type_config)
+
+        self.display.Create_Figure(type=self.plot_type, parameters=self.parameters)
+
+        self.Layout()
+        self.GetParent().GetParent().sizer.Layout()
+
+
+    def Time_based_General_and_x_control_SetUp(self, gen_x_control_sizer=None):
+
+        gen_x_control_sizer.Add(wx.StaticText(self, label='General and x value Plot Setting :'))
+
+        x_axis_title_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        x_axis_title_static = wx.StaticText(self, label='x axis title : ')
+        self.x_axis_title_text = wx.TextCtrl(self, value='X axis')
+        self.parameters['x axis title'] = self.x_axis_title_text.GetValue()
+        x_axis_title_sizer.Add(x_axis_title_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        x_axis_title_sizer.Add(self.x_axis_title_text, 0, wx.ALIGN_LEFT)
+        gen_x_control_sizer.Add(x_axis_title_sizer, 0, wx.ALL, 5)
+
+        grid_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        grid_static = wx.StaticText(self, label='With Grid : ')
+        self.grid_checkbox = wx.CheckBox(self)
+        self.grid_checkbox.SetValue(True)
+        self.parameters['Grid'] = self.grid_checkbox.GetValue()
+        grid_sizer.Add(grid_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        grid_sizer.Add(self.grid_checkbox, 0, wx.ALIGN_LEFT)
+        gen_x_control_sizer.Add(grid_sizer, 0, wx.ALL, 5)
+
+        x_min_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        x_min_static = wx.StaticText(self, label='x minimum : ')
+        self.x_min_combo = wx.ComboBox(self, value='Auto', choices=['Auto', 'Manual'])
+        self.x_min_text = wx.TextCtrl(self, value='0', style=wx.TE_PROCESS_ENTER, size=(40, -1))
+        x_min_sizer.Add(x_min_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        x_min_sizer.Add(self.x_min_combo, 0, wx.ALIGN_LEFT)
+        x_min_sizer.Add(self.x_min_text, 0, wx.ALIGN_LEFT) # need to disable it when auto is selected
+        gen_x_control_sizer.Add(x_min_sizer, 0, wx.ALL, 5)
+
+        x_max_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        x_max_static = wx.StaticText(self, label='x maximum : ')
+        self.x_max_combo = wx.ComboBox(self, value='Auto', choices=['Auto', 'Manual'])
+        self.x_max_text = wx.TextCtrl(self, value='50', style=wx.TE_PROCESS_ENTER, size=(40, -1))
+        x_max_sizer.Add(x_max_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        x_max_sizer.Add(self.x_max_combo, 0, wx.ALIGN_LEFT)
+        x_max_sizer.Add(self.x_max_text, 0, wx.ALIGN_LEFT)  # need to disable it when auto is selected
+        gen_x_control_sizer.Add(x_max_sizer, 0, wx.ALL, 5)
+
+    def Time_based_Y1_control_SetUp(self, y1_control_sizer=None):
+
+        y1_control_sizer.Add(wx.StaticText(self, label='y1 value Plot Setting :'))
+
+        y1_axis_title_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        y1_axis_title_static = wx.StaticText(self, label='y1 axis title : ')
+        self.y1_axis_title_text = wx.TextCtrl(self, value='y1 axis')
+        self.parameters['y1 axis title'] = self.y1_axis_title_text.GetValue()
+        y1_axis_title_sizer.Add(y1_axis_title_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        y1_axis_title_sizer.Add(self.y1_axis_title_text, 0, wx.ALIGN_LEFT)
+        y1_control_sizer.Add(y1_axis_title_sizer, 0, wx.ALL, 5)
+
+        y1_color_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        y1_color_static = wx.StaticText(self, label='y1 line Color : ')
+        self.y1_color_combo = wx.ComboBox(self, value='Black', choices=['Black', 'Red', 'Blue', 'Green', 'Yellow'])
+        self.parameters['y1 line Color'] = self.y1_color_combo.GetValue()
+        y1_color_sizer.Add(y1_color_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        y1_color_sizer.Add(self.y1_color_combo, 0, wx.ALIGN_LEFT)
+        y1_control_sizer.Add(y1_color_sizer, 0, wx.ALL, 5)
+
+        y1_overlay_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        y1_overlay_static = wx.StaticText(self, label='With Overlay : ')
+        self.y1_overlay_checkbox = wx.CheckBox(self)
+        self.y1_overlay_checkbox.SetValue(True)
+        self.parameters['y1 Overlay'] = self.y1_overlay_checkbox.GetValue()
+        y1_overlay_sizer.Add(y1_overlay_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        y1_overlay_sizer.Add(self.y1_overlay_checkbox, 0, wx.ALIGN_LEFT)
+        y1_control_sizer.Add(y1_overlay_sizer, 0, wx.ALL, 5)
+
+        y1_overlay_color_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        y1_overlay_color_static = wx.StaticText(self, label='y1 Overlay Color : ')
+        self.y1_overlay_color_combo = wx.ComboBox(self, value='Red', choices=['Black', 'Red', 'Blue', 'Green', 'Yellow'])
+        self.parameters['y1 Overlay Color'] = self.y1_overlay_color_combo.GetValue()
+        y1_overlay_color_sizer.Add(y1_overlay_color_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        y1_overlay_color_sizer.Add(self.y1_overlay_color_combo, 0, wx.ALIGN_LEFT)
+        y1_control_sizer.Add(y1_overlay_color_sizer, 0, wx.ALL, 5)
+
+        y1_min_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        y1_min_static = wx.StaticText(self, label='y1 minimum : ')
+        self.y1_min_combo = wx.ComboBox(self, value='Auto', choices=['Auto', 'Manual'])
+        self.y1_min_text = wx.TextCtrl(self, value='0', style=wx.TE_PROCESS_ENTER, size=(40, -1))
+        y1_min_sizer.Add(y1_min_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        y1_min_sizer.Add(self.y1_min_combo, 0, wx.ALIGN_LEFT)
+        y1_min_sizer.Add(self.y1_min_text, 0, wx.ALIGN_LEFT) # need to disable it when auto is selected
+        y1_control_sizer.Add(y1_min_sizer, 0, wx.ALL, 5)
+
+        y1_max_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        y1_max_static = wx.StaticText(self, label='y1 maximum : ')
+        self.y1_max_combo = wx.ComboBox(self, value='Auto', choices=['Auto', 'Manual'])
+        self.y1_max_text = wx.TextCtrl(self, value='50', style=wx.TE_PROCESS_ENTER, size=(40, -1))
+        y1_max_sizer.Add(y1_max_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        y1_max_sizer.Add(self.y1_max_combo, 0, wx.ALIGN_LEFT)
+        y1_max_sizer.Add(self.y1_max_text, 0, wx.ALIGN_LEFT)  # need to disable it when auto is selected
+        y1_control_sizer.Add(y1_max_sizer, 0, wx.ALL, 5)
+
+    def Time_based_Y2_control_SetUp(self, y2_control_sizer=None):
+        y2_control_sizer.Add(wx.StaticText(self, label=' Setting :'))
+
+        y2_axis_title_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        y2_axis_title_static = wx.StaticText(self, label='y2 axis title : ')
+        self.y2_axis_title_text = wx.TextCtrl(self, value='Y2 axis')
+        self.parameters['x axis title']= self.y2_axis_title_text.GetValue()
+        self.y2_axis_title_text.Disable()
+        y2_axis_title_sizer.Add(y2_axis_title_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        y2_axis_title_sizer.Add(self.y2_axis_title_text, 0, wx.ALIGN_LEFT)
+        y2_control_sizer.Add(y2_axis_title_sizer, 0, wx.ALL, 5)
+
+        y2_color_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        y2_color_static = wx.StaticText(self, label='y2 line Color : ')
+        self.y2_color_combo = wx.ComboBox(self, value='Green', choices=['Black', 'Red', 'Blue', 'Green', 'Yellow'])
+        self.parameters['y2 line Color'] = self.y2_color_combo.GetValue()
+        self.y2_color_combo.Disable()
+        y2_color_sizer.Add(y2_color_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        y2_color_sizer.Add(self.y2_color_combo, 0, wx.ALIGN_LEFT)
+        y2_control_sizer.Add(y2_color_sizer, 0, wx.ALL, 5)
+
+        y2_overlay_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        y2_overlay_static = wx.StaticText(self, label='With overlay : ')
+        self.y2_overlay_checkbox = wx.CheckBox(self)
+        self.y2_overlay_checkbox.SetValue(True)
+        self.parameters['Overlay'] = self.y2_overlay_checkbox.GetValue()
+        self.y2_overlay_checkbox.Disable()
+        y2_overlay_sizer.Add(y2_overlay_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        y2_overlay_sizer.Add(self.y2_overlay_checkbox, 0, wx.ALIGN_LEFT)
+        y2_control_sizer.Add(y2_overlay_sizer, 0, wx.ALL, 5)
+
+        y2_overlay_color_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        y2_overlay_color_static = wx.StaticText(self, label='y2 Overlay Color : ')
+        self.y2_overlay_color_combo = wx.ComboBox(self, value='Blue', choices=['Black', 'Red', 'Blue', 'Green', 'Yellow'])
+        self.parameters['y2 Overlay Color'] = self.y2_overlay_color_combo.GetValue()
+        self.y2_overlay_color_combo.Disable()
+        y2_overlay_color_sizer.Add(y2_overlay_color_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        y2_overlay_color_sizer.Add(self.y2_overlay_color_combo, 0, wx.ALIGN_LEFT)
+        y2_control_sizer.Add(y2_overlay_color_sizer, 0, wx.ALL, 5)
+
+        y2_min_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        y2_min_static = wx.StaticText(self, label='y2 minimum : ')
+        self.y2_min_combo = wx.ComboBox(self, value='Auto', choices=['Auto', 'Manual'])
+        self.y2_min_combo.Disable()
+        self.y2_min_text = wx.TextCtrl(self, value='0', style=wx.TE_PROCESS_ENTER, size=(40, -1))
+        self.y2_min_text.Disable()
+        y2_min_sizer.Add(y2_min_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        y2_min_sizer.Add(self.y2_min_combo, 0, wx.ALIGN_LEFT)
+        y2_min_sizer.Add(self.y2_min_text, 0, wx.ALIGN_LEFT)  # need to disable it when auto is selected
+        y2_control_sizer.Add(y2_min_sizer, 0, wx.ALL, 5)
+
+        y2_max_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        y2_max_static = wx.StaticText(self, label='y2 maximum : ')
+        self.y2_max_combo = wx.ComboBox(self, value='Auto', choices=['Auto', 'Manual'])
+        self.y2_max_combo.Disable()
+        self.y2_max_text = wx.TextCtrl(self, value='50', style=wx.TE_PROCESS_ENTER, size=(40, -1))
+        self.y2_max_text.Disable()
+        y2_max_sizer.Add(y2_max_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        y2_max_sizer.Add(self.y2_max_combo, 0, wx.ALIGN_LEFT)
+        y2_max_sizer.Add(self.y2_max_text, 0, wx.ALIGN_LEFT)  # need to disable it when auto is selected
+        y2_control_sizer.Add(y2_max_sizer, 0, wx.ALL, 5)
+
+    def Time_based_Access_y2_control(self, evt):
+        if self.y2_value_combo.GetValue() == 'Disabled':
+            self.y2_axis_title_text.Disable()
+            self.y2_color_combo.Disable()
+            self.y2_overlay_checkbox.Disable()
+            self.y2_overlay_color_combo.Disable()
+            self.y2_min_combo.Disable()
+            self.y2_min_text.Disable()
+            self.y2_max_combo.Disable()
+            self.y2_max_text.Disable()
+        else:
+            self.y2_axis_title_text.Enable()
+            self.y2_color_combo.Enable()
+            self.y2_overlay_checkbox.Enable()
+            self.y2_overlay_color_combo.Enable()
+            self.y2_min_combo.Enable()
+            self.y2_min_text.Enable()
+            self.y2_max_combo.Enable()
+            self.y2_max_text.Enable()
+
+
+    def Update_CPF_plot_type_config(self):
+
+        self.parameters = {}
+        self.Base_update_tab_config()
+
+        PF_convention_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        PF_convention_static = wx.StaticText(self, label='PF Convention : ')
+        self.PF_convention_combo = wx.ComboBox(self, value='IEEE', choices=['IEEE', 'IEC', 'Sunspec'])
+        self.parameters['PF_convention'] = self.PF_convention_combo.GetValue()
+        PF_convention_sizer.Add(PF_convention_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        PF_convention_sizer.Add(self.PF_convention_combo, 0, wx.ALIGN_LEFT)
+        self.control_sizer.Add(PF_convention_sizer, 0, wx.ALL, 5)
+
+        self.main_sizer.Add(self.control_sizer, 1, wx.EXPAND)
+
+        self.static_line_main = wx.StaticLine(self, style=wx.LI_VERTICAL)
+        self.main_sizer.Add(self.static_line_main, 0, wx.EXPAND)
+
+        self.display_Text = wx.StaticText(self, label=self.title_text.GetValue())
+        self.display_control_buttons_sizer.Add(self.display_Text, 0, wx.EXPAND)
+
+        self.display = RTP.Preference_canvas(self)
+        self.display_control_buttons_sizer.Add(self.display, 2, wx.EXPAND)
+
+        static_line_dcb_1 = wx.StaticLine(self, style=wx.LI_HORIZONTAL)
+        self.display_control_buttons_sizer.Add(static_line_dcb_1, 0, wx.EXPAND)
+
+        controls_under_display_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+        general_control_sizer = wx.BoxSizer(wx.VERTICAL)
+        self.CPF_General_setup(general_control_sizer)
+        controls_under_display_sizer.Add(general_control_sizer, 1, wx.EXPAND | wx.ALIGN_LEFT)
+
+        self.display_control_buttons_sizer.Add(controls_under_display_sizer, 1, wx.EXPAND)
+
+        self.main_sizer.Add(self.display_control_buttons_sizer, 2, wx.EXPAND)
+
+        self.plot_type_combo.Bind(wx.EVT_COMBOBOX_CLOSEUP, self.Update_tab_plot_type_config)
+
+        self.display.Create_Figure(type=self.plot_type, parameters=self.parameters)
+
+        self.Layout()
+        self.GetParent().GetParent().sizer.Layout()
+
+    def CPF_General_setup(self, general_control_sizer):
+        general_control_sizer.Add(wx.StaticText(self, label='General Plot Setting :'))
+
+        grid_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        grid_static = wx.StaticText(self, label='With Grid : ')
+        self.grid_checkbox = wx.CheckBox(self)
+        self.grid_checkbox.SetValue(True)
+        self.parameters['Grid'] = self.grid_checkbox.GetValue()
+        grid_sizer.Add(grid_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        grid_sizer.Add(self.grid_checkbox, 0, wx.ALIGN_LEFT)
+        general_control_sizer.Add(grid_sizer, 0, wx.ALL, 5)
+
+        color_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        color_static = wx.StaticText(self, label='line Color : ')
+        self.color_combo = wx.ComboBox(self, value='Black', choices=['Black', 'Red', 'Blue', 'Green', 'Yellow'])
+        self.parameters['line Color'] = self.color_combo.GetValue()
+        color_sizer.Add(color_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        color_sizer.Add(self.color_combo, 0, wx.ALIGN_LEFT)
+        general_control_sizer.Add(color_sizer, 0, wx.ALL, 5)
+
+        overlay_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        overlay_static = wx.StaticText(self, label='With Overlay : ')
+        self.overlay_checkbox = wx.CheckBox(self)
+        self.overlay_checkbox.SetValue(True)
+        self.parameters['Overlay'] = self.overlay_checkbox.GetValue()
+        overlay_sizer.Add(overlay_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        overlay_sizer.Add(self.overlay_checkbox, 0, wx.ALIGN_LEFT)
+        general_control_sizer.Add(overlay_sizer, 0, wx.ALL, 5)
+
+        overlay_color_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        overlay_color_static = wx.StaticText(self, label='Overlay Color : ')
+        self.overlay_color_combo = wx.ComboBox(self, value='Red',
+                                               choices=['Black', 'Red', 'Blue', 'Green', 'Yellow'])
+        self.parameters['Overlay color'] = self.overlay_color_combo.GetValue()
+        overlay_color_sizer.Add(overlay_color_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        overlay_color_sizer.Add(self.overlay_color_combo, 0, wx.ALIGN_LEFT)
+        general_control_sizer.Add(overlay_color_sizer, 0, wx.ALL, 5)
+
+    def Update_tab_plot_type_config(self, evt):
+
+        try:
+            self.plot_type = self.plot_type_combo.GetValue()
+            if self.plot_type == 'Disabled':
+                self.Update_Disabled_plot_type_config()
+            elif self.plot_type == 'Time-based':
+                self.Update_Time_based_plot_type_config()
+            elif self.plot_type == 'XY':
+                self.Update_XY_plot_type_config()
+            elif self.plot_type == 'CPF':
+                self.Update_CPF_plot_type_config()
+
+        except Exception as e:
+            print('sunssvp: error: {}'.format((e)))
+
+    def Initial_Disabled_tab_config(self):
+
+        self.static_line_main = wx.StaticLine(self, style=wx.LI_VERTICAL)
+        self.main_sizer.Add(self.static_line_main, 0, wx.EXPAND)
+
+        self.display_Text = wx.StaticText(self, label=self.title_text.GetValue())
+        self.display_control_buttons_sizer.Add(self.display_Text, 1, wx.EXPAND)
+        self.display_Text.Hide()
+        self.main_sizer.Add(self.display_control_buttons_sizer, 2, wx.EXPAND)
+
+
+class RtpPrefDialog(wx.Dialog):
+    def __init__(self, entity=None, title=None):
+        wx.Dialog.__init__(self, parent=None, title='Real-Time Plotting', size=(900, 500),
+                           style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER | wx.MINIMIZE_BOX | wx.MAXIMIZE_BOX)
+
+        self.rtp_pref_nb = wx.Notebook(self, 0)
+
+        self.main_tab = RtppMainTab(self.rtp_pref_nb)
+        other_tabs = self.RtppCreateOtherTab(self.main_tab, self.rtp_pref_nb)
+
+        self.rtp_pref_nb.AddPage(self.main_tab, "General Preference")
+        for tab in range(0, len(other_tabs)):
+            self.rtp_pref_nb.AddPage(other_tabs[tab], other_tabs[tab].title)
+        self.main_tab.Update_Graph_titles()
+        self.RowColumnSetUp()
+        self.rtp_pref_nb.Fit()
+        self.sizer = wx.BoxSizer(wx.VERTICAL)
+        self.sizer.Add(self.rtp_pref_nb, 1, wx.ALL | wx.EXPAND | wx.ALIGN_CENTRE, 5)
+
+        buttons_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
+        buttons1 = wx.Button(self, label='Ok')
+        buttons_sizer.Add(buttons1, 0, wx.ALIGN_LEFT | wx.ALIGN_BOTTOM | wx.RIGHT, 5)
+
+        buttons2 = wx.Button(self, label='Apply')
+        buttons_sizer.Add(buttons2, 0, wx.ALIGN_CENTER_HORIZONTAL | wx.ALIGN_BOTTOM | wx.RIGHT, 5)
+
+        buttons3 = wx.Button(self, label='Cancel')
+        buttons3.Bind(wx.EVT_BUTTON, self._onCancel)
+        buttons_sizer.Add(buttons3, 0, wx.ALIGN_RIGHT | wx.ALIGN_BOTTOM)
+
+        self.sizer.Add(buttons_sizer, 0, wx.ALIGN_RIGHT)
+
+        self.SetSizer(self.sizer)
+        self.Center()
+
+    def _onCancel(self, evt):
+        self.Close()
+
+    def RtppCreateOtherTab(self, main_tab, nb):
+        tabs = []
+        for tab in range(0, main_tab.number_of_other_tab):
+            other_tab = RtppOtherTab(nb)
+            tabs.append(other_tab)
+        return tabs
+
+    def RtppUpdateOtherTab(self):
+        new_number_of_tabs = self.main_tab.number_of_other_tab + 1
+        old_number_of_tabs = self.rtp_pref_nb.GetPageCount()
+        if new_number_of_tabs > old_number_of_tabs:
+            for tab in range(old_number_of_tabs, new_number_of_tabs):
+                new_tab = RtppOtherTab(self.rtp_pref_nb)
+                self.rtp_pref_nb.AddPage(new_tab, new_tab.title)
+            self.RowColumnSetUp()
+        elif new_number_of_tabs < old_number_of_tabs:
+            for i in range(new_number_of_tabs, old_number_of_tabs):
+                self.rtp_pref_nb.RemovePage(new_number_of_tabs)
+        self.sizer.Layout()
+
+    def RowColumnSetUp(self):
+        column_lenght = self.main_tab.column_text.GetValue()
+        row = 1
+        column = 1
+        for j in range(1, self.rtp_pref_nb.GetPageCount()):
+            other_tab = self.rtp_pref_nb.GetPage(j)
+            if float(j)/float(column_lenght) <= row:
+                other_tab.column_text.SetLabel(str(column))
+                other_tab.column = str(column)
+                column += 1
+            else:
+                row += 1
+                column = 1
+                other_tab.column_text.SetLabel(str(column))
+                other_tab.column = str(column)
+                column += 1
+
+            other_tab.row_text.SetLabel(str(row))
+            other_tab.row = str(row)
+
+
 class ToolFrame(wx.Frame):
 
     menu_new_items = [(wx.ID_ANY, 'Directory...', '', None, OP_NEW_DIR),
@@ -4094,11 +4944,6 @@ class ToolFrame(wx.Frame):
 
     menu_add_items = [(wx.ID_ANY, 'Suite...', '', None, OP_ADD_SUITE),
                       (wx.ID_ANY, 'Test...', '', None, OP_ADD_TEST)]
-
-    menu_rtp_items = [(wx.ID_ANY, 'active', '', None, OP_RTP_ACT),
-                           (wx.ID_ANY, 'Preference', '', None, OP_RTP_PREF)]
-
-    menu_view_items = [(wx.ID_ANY, 'Real-time Plotting', '', menu_rtp_items, OP_VIEW_RTP)]
 
     menu_file_items = [(wx.ID_ANY, 'New', '', menu_new_items, None),
                        (wx.ID_ANY, '', '', None, None),
@@ -4110,6 +4955,7 @@ class ToolFrame(wx.Frame):
                        (wx.ID_ANY, 'Move/Rename', '', None, OP_MOVE),
                        (wx.ID_ANY, 'Rescan', '', None, OP_RESCAN),
                        (wx.ID_ANY, '', '', None, None),
+                       (wx.ID_ANY, 'Real-Time Plotting Preference', '', None, OP_RTP_PREF),
                        (wx.ID_DELETE, 'Delete', '', None, OP_DELETE),
                        (wx.ID_ANY, 'Delete All', '', None, OP_DELETE_ALL),
                        (wx.ID_REMOVE, 'Remove', '', None, OP_REMOVE)]
@@ -4118,7 +4964,7 @@ class ToolFrame(wx.Frame):
                        # (wx.ID_ANY,'Remove', '', None, OP_REMOVE),
                        # (wx.ID_ANY,'Move Up', '', None, OP_MOVE_UP),
                        # (wx.ID_ANY,'Move Down', '', None, OP_MOVE_DOWN)]
-
+    menu_pkg_items = [(wx.ID_ANY, 'Library', '', None, OP_PKG)]
     menu_help_items = [(wx.ID_ANY, 'About', '', None, OP_ABOUT)]
 
     def __init__(self, parent, title, id):
@@ -4175,8 +5021,8 @@ class ToolFrame(wx.Frame):
         menu_bar.Append(file_menu, 'File')
         edit_menu, enabled = self.create_menu(ToolFrame.menu_edit_items, ops)
         menu_bar.Append(edit_menu, 'Edit')
-        view_menu, enabled = self.create_menu(ToolFrame.menu_view_items, ops)
-        menu_bar.Append(view_menu, 'View')
+        package_menu, enabled = self.create_menu(ToolFrame.menu_pkg_items, ops)
+        menu_bar.Append(package_menu, 'Package')
         help_menu, enabled = self.create_menu(ToolFrame.menu_help_items, ops)
         menu_bar.Append(help_menu, 'Help')
         self.SetMenuBar(menu_bar)
@@ -4189,7 +5035,7 @@ class ToolFrame(wx.Frame):
             if item[1]:
                 if item[3] is not None:
                     submenu, submenu_enabled = self.create_menu(item[3], ops)
-                    menu_item = menu.Append(item[0], item[1], submenu)
+                    menu_item = menu.AppendSubMenu(submenu, item[1])
                     menu_item.Enable(submenu_enabled)
                 else:
                     menu_item = menu.Append(item[0], item[1], item[2])
@@ -4215,7 +5061,10 @@ class ToolFrame(wx.Frame):
             ops = {}
         ops[OP_ADD_WORKING_DIR] = (self.OnAddWorkingDir, None)
         ops[OP_EXIT] = (self.OnExit, None)
+        ops[OP_PKG] = (self.OnPackage, None)
         ops[OP_ABOUT] = (self.OnAbout, None)
+        ops[OP_RTP_PREF] = (self.OnRtpPref, None)
+
         self.entity_tree.update_menu_ops(ops)
         return ops
 
@@ -4242,13 +5091,42 @@ class ToolFrame(wx.Frame):
         dialog.Destroy()
 
     def OnAbout(self, evt):
-        info = wx.adv.AboutDialogInfo()
-        info.Name = 'System Validation Platform'
-        info.Version = VERSION
+        wrapper = textwrap.TextWrapper(width=40,
+                                       initial_indent=" " * 4,
+                                       subsequent_indent=" " * 4,
+                                       break_long_words=True,
+                                       break_on_hyphens=True)
+        description_str = ("The SunSpec System Validation Platform "
+                                 "(SunSpec SVP) provides a framework for "
+                                 "testing and validating SunSpec compliant "
+                                 "devices and applications.")
 
-        info.Name = 'System Validation Platform'
-        info.Version = VERSION
-        wx.adv.AboutBox(info)
+        aboutInfo = wx.adv.AboutDialogInfo()
+        aboutInfo.SetName("System Validation Platform")
+        aboutInfo.SetVersion(VERSION)
+        aboutInfo.SetDescription(wrapper.fill(description_str))
+        #aboutInfo.SetCopyright("(C) 1992-2012")
+        aboutInfo.SetWebSite("https://sunspec.org/sunspec-system-validation-platform-2/",
+                             desc= "For mor information visit SunSpec website")
+        #aboutInfo.AddDeveloper("My Self")
+        wx.adv.AboutBox(aboutInfo)
+
+    def OnPackage(self, evt):
+        dialog = wx.DirDialog(None, "Choose a directory for python package:", style = wx.DD_DEFAULT_STYLE | wx.DD_NEW_DIR_BUTTON)
+        if dialog.ShowModal() == wx.ID_OK:
+            path = dialog.GetPath()
+            if path:
+                sys.path.insert(1, path)
+            for p in sys.path:
+                print(p)
+
+        dialog.Destroy()
+
+    def OnRtpPref(self, evt):
+        dialog = RtpPrefDialog(self)
+        dialog.CenterOnParent()
+        dialog.ShowModal()
+        dialog.Destroy()
 
     def OnExit(self, evt):
         self.periodic_timer.Stop()
@@ -4261,6 +5139,42 @@ class ToolFrame(wx.Frame):
             for rc in run_context_list:
                 rc.periodic()
 
+class PackageDialog(wx.Dialog):
+    def __init__(self, parent, title):
+        super(PackageDialog, self).__init__(parent, title=title, size=(300, 200))
+
+        self.InitUI()
+
+    def InitUI(self):
+        self.count = 0
+        pnl = wx.Panel(self)
+        vbox = wx.BoxSizer(wx.VERTICAL)
+
+        hbox1 = wx.BoxSizer(wx.HORIZONTAL)
+        hbox2 = wx.BoxSizer(wx.HORIZONTAL)
+
+        self.text = wx.TextCtrl(pnl, size=(250, 25), style=wx.TE_READONLY)
+        self.btn1 = wx.Button(pnl, label="Enter Text")
+        self.Bind(wx.EVT_BUTTON, self.OnClick, self.btn1)
+
+        hbox1.Add(self.text, proportion=1, flag=wx.ALIGN_CENTRE)
+        hbox2.Add(self.btn1, proportion=1, flag=wx.RIGHT, border=10)
+
+        vbox.Add((0, 30))
+        vbox.Add(hbox1, flag=wx.ALIGN_CENTRE)
+        vbox.Add((0, 20))
+        vbox.Add(hbox2, proportion=1, flag=wx.ALIGN_CENTRE)
+
+        pnl.SetSizer(vbox)
+        self.Centre()
+        self.Show(True)
+
+    def OnClick(self, e):
+        dlg = wx.TextEntryDialog(self, 'Enter Your Name', 'Text Entry Dialog')
+
+        if dlg.ShowModal() == wx.ID_OK:
+            self.text.SetValue("Name entered:" + dlg.GetValue())
+        dlg.Destroy()
 
 class ResultDialog(wx.Dialog):
     def __init__(self, parent=None, results=None, result_dir=None, result_name=None, title=None, image_list=None):
@@ -4449,7 +5363,7 @@ class ResultTree(treectrl.CustomTreeCtrl):
                 #entity_window.entity_detail.Layout()
                 # entity_window.entity_detail.Scroll(0, 0)
                 ## self.info_window.FitInside()
-        except Exception, e:
+        except Exception as e:
             wx.MessageBox('Error: %s' % traceback.format_exc(), caption='Error', style=wx.OK | wx.ICON_ERROR)
 
         # p = wx.Panel(self.info_window)
@@ -4558,8 +5472,6 @@ class RunCtrl(object):
         self.run_panel = run_panel
         self.run_bitmap = wx.Bitmap(os.path.join(images_path, 'run_96.gif'), wx.BITMAP_TYPE_GIF)
         self.stop_bitmap = wx.Bitmap(os.path.join(images_path, 'stop_96.gif'), wx.BITMAP_TYPE_GIF)
-        # Real-time plotting changes
-        self.rtp_bitmap = wx.Bitmap(os.path.join(images_path, 'rtp_96.gif'), wx.BITMAP_TYPE_GIF)
         self.run_button = wx.BitmapButton(self.parent, bitmap=self.run_bitmap)
         self.run_button.Bind(wx.EVT_BUTTON, self.run)
         self.run_button.Disable()
@@ -4567,11 +5479,6 @@ class RunCtrl(object):
         self.stop_button.Bind(wx.EVT_BUTTON, self.stop)
         self.stop_button.SetFocus()
         self.stop_button.Enable()
-        # Real-time plotting changes
-        self.rtp_button = wx.BitmapButton(self.parent, bitmap=self.rtp_bitmap)
-        self.rtp_button.Bind(wx.EVT_BUTTON, self.rtp)
-        self.rtp_button.Enable()
-        self.rtp_process = None
 
     def update(self, status):
         if status == rslt.RESULT_RUNNING:
@@ -4586,11 +5493,6 @@ class RunCtrl(object):
 
     def stop(self, event):
         self.run_panel.run_tree.run_context.stop()
-
-    # Real-time plotting changes
-    def rtp(self, event):
-        self.rtp_process = svp.MultiProcess(name='Real-time Plotting', target=RealTimePlotting, args=(self,))
-        self.rtp_process.start()
 
 
 class RunPanel(wx.Panel):
@@ -4644,8 +5546,6 @@ class RunPanel(wx.Panel):
         self.run_ctrl = RunCtrl(self.status_bar, self)
         status_bar_ctrl_sizer.Add(self.run_ctrl.run_button, 0, wx.TOP|wx.BOTTOM|wx.LEFT|wx.RIGHT, 5)
         status_bar_ctrl_sizer.Add(self.run_ctrl.stop_button, 0, wx.TOP|wx.BOTTOM|wx.LEFT|wx.RIGHT, 5)
-        # Real-time plotting changes
-        status_bar_ctrl_sizer.Add(self.run_ctrl.rtp_button, 0, wx.TOP|wx.BOTTOM|wx.LEFT|wx.RIGHT, 5)
 
         self.sizer.Add(self.sp, 1, wx.EXPAND)
         self.sizer.Add(self.status_bar, 0, wx.EXPAND)
@@ -4768,7 +5668,7 @@ class RunTree(treectrl.CustomTreeCtrl):
                 #entity_window.entity_detail.Layout()
                 # entity_window.entity_detail.Scroll(0, 0)
                 ## self.info_window.FitInside()
-        except Exception, e:
+        except Exception as e:
             wx.MessageBox('Error: %s' % traceback.format_exc(), caption='Error', style=wx.OK | wx.ICON_ERROR)
 
         # p = wx.Panel(self.info_window)
@@ -4906,11 +5806,12 @@ class RunEntry(object):
         if self.result.filename is not None:
             limit = 0
             filename = os.path.join(self.run_tree.run_context.results_dir, self.result.filename)
+            # "ext" extracts the extension from the filename
             ext = os.path.splitext(filename)[1]
             if ext != svp.LOG_EXT:
                 limit = 1000
             f = open(filename)
-
+            #TODO : need to be handle when it is a excel file
             for entry in f:
                 if len(entry) > 27 and entry[4] == '-' and entry[7] == '-' and entry[13] == ':' and entry[16] == ':':
                     info_log.SetDefaultStyle(wx.TextAttr((26, 13, 171)))
@@ -4979,7 +5880,6 @@ class RunDialog(wx.Dialog):
 
         self.Bind(wx.EVT_CLOSE, self.OnClose)
 
-
     def OnClose(self, event):
         if event.CanVeto():
             if self.panel.run_tree.run_context.active:
@@ -4992,19 +5892,12 @@ class RunDialog(wx.Dialog):
                     self.panel.run_tree.run_context.terminate()
                     break
                 count -= 1
-
-        if self.panel.run_ctrl.rtp_process and self.panel.run_ctrl.rtp_process.is_alive():
-            try:
-                self.panel.run_ctrl.rtp_process.terminate()
-            except Exception, e:
-                print 'Process termination error: %s' % (e)
         self.Destroy()
 
 
 class Tool(object):
     def __init__(self):
         self.xyz = None
-        self.id= None
         try:
             import win32api
 
@@ -5016,9 +5909,8 @@ class Tool(object):
     def run(self, args=None):
         if args is not None:
             try:
-                # modification for UML purposes
-                self.svp_cmd = svp.SVP(self.id)
-                self.svp_cmd.run({'svp_dir': args.svp_dir,
+                svp_cmd = svp.SVP(self.id)
+                svp_cmd.run({'svp_dir': args.svp_dir,
                              'svp_file': args.target})
                 '''
                 app_cmd.run(args.svp_dir, args.target, args.result)
@@ -5026,9 +5918,9 @@ class Tool(object):
                     app_cmd.periodic()
                     time.sleep(.2)
                 '''
-            except Exception, e:
+            except Exception as e:
                 # raise
-                print 'sunssvp: error: %s' % (str(e))
+                print ('sunssvp: error: {}'.format((e)))
                 return 1
         else:
             self.wx_app = wx.App(False)
@@ -5042,7 +5934,7 @@ class Tool(object):
                 self.wx_app.SetTopWindow(self.frm)
 
                 self.wx_app.MainLoop()
-            except Exception, e:
+            except Exception as e:
                 wx.MessageBox('Error: %s' % traceback.format_exc(), caption='Error', style=wx.OK | wx.ICON_ERROR)
 
 def main(args=None):
@@ -5051,7 +5943,8 @@ def main(args=None):
 
 if __name__ == "__main__":
 
-    #sys.stdout = sys.stderr = open(os.path.join(svp.trace_dir(), 'sunssvp.log'), "w", buffering=0)
+    # sys.stdout = sys.stderr = open(os.path.join(svp.trace_dir(), 'sunssvp.log'), "w", buffering=0)
+
     # On Windows calling this function is necessary.
     multiprocessing.freeze_support()
 
@@ -5061,5 +5954,6 @@ if __name__ == "__main__":
         parser.add_argument('svp_dir', help='SVP directory')
         parser.add_argument('target', help='suite/test/script in SVP directory')
         args = parser.parse_args()
+
     err = main(args)
     sys.exit(err)
