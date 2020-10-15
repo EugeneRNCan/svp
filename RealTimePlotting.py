@@ -14,6 +14,7 @@ import pandas as pd
 import matplotlib
 
 matplotlib.use('WXAgg')
+from matplotlib import lines
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_wxagg import \
     FigureCanvasWxAgg as FigCanvas, \
@@ -26,6 +27,19 @@ info_values = {
     'Single phase': ['1'],
     'Three phase': ['1', '2', '3']
 
+}
+
+MARKER = {
+    'Point': '.',
+    'Circle': 'o',
+    'Triangle': '^',
+    'Tri': '2',
+    'Octagon': '8',
+    'Square': 's',
+    'Pentagone': 'p',
+    'Star': '*',
+    'Diamond': 'D',
+    'Plus': 'P'
 }
 
 
@@ -79,9 +93,13 @@ class BoundControlBox(wx.Panel):
         return self.value
 
 class Preference_canvas(FigCanvas):
-    def __init__(self, panel=wx.Panel):
-        self.pref_figure = Figure()
+    def __init__(self, panel=wx.Panel, size=(0, 0), title='tab'):
+        height = 1*size[1]/400
+        width = 2*size[0]/300
+        self.pref_figure = Figure(figsize=(width, height))
         FigCanvas.__init__(self, panel, -1, self.pref_figure)
+        self.second_axes = None
+        self.title = title
 
 
 
@@ -94,22 +112,240 @@ class Preference_canvas(FigCanvas):
             self.Time_based_Figure()
         elif self.type == 'XY':
             self.XY_Figure()
-        elif self.type == 'CPF':
-            self.CPF_Figure()
 
     def Time_based_Figure(self):
 
-        axes = self.pref_figure.add_subplot(111)
-        axes.set_facecolor('white')
-        axes.set_ylabel(self.parameters['y1 axis title'])
-        axes.set_xlabel(self.parameters['x axis title'])
+        self.axes = self.pref_figure.add_subplot(111)
+        self.axes.set_facecolor('white')
+        self.axes.set_title(self.title)
+        self.axes.set_ylabel(self.parameters['y1 axis title'])
+        self.axes.set_xlabel(self.parameters['x axis title'])
+        pylab.setp(self.axes.get_xticklabels(), fontsize=8)
+        pylab.setp(self.axes.get_yticklabels(), fontsize=8)
+
+        x = list(np.arange(55, 155, 1))
+
+        if self.parameters['y2_axe'] != 'Disabled':
+            self.second_axes = self.axes.twinx()
+            self.second_axes.set_ylabel(self.parameters['y2 axis title'])
+            pylab.setp(self.second_axes.get_yticklabels(), fontsize=8)
+            y2 = [6000] * 25 + list(np.arange(6000, 2000, -80)) + [2000] * 25
+            if self.parameters['y2 Overlay']:
+                self.y2_overlay_max = lines.Line2D(x,
+                                              [8000] * 100,
+                                              linewidth=1,
+                                              color=self.parameters['y2 Overlay Color'],
+                                              label='y2 Overlay'
+                                              )
+                self.y2_overlay_min = lines.Line2D(x,
+                                              [1000] * 100,
+                                              linewidth=1,
+                                              color=self.parameters['y2 Overlay Color']
+                                              )
+        # example values :
+
+        y1 = [140] * 25 + list(np.arange(140, 290, 3)) + [290] * 25
+        if self.parameters['y1 Overlay']:
+            self.y1_overlay_max = lines.Line2D(x,
+                                          [200] * 100,
+                                          linewidth=1,
+                                          color=self.parameters['y1 Overlay Color'],
+                                          label='y1 Overlay'
+                                          )
+            self.y1_overlay_min = lines.Line2D(x,
+                                          [25] * 100,
+                                          linewidth=1,
+                                          color=self.parameters['y1 Overlay Color']
+                                          )
+
+        self.axes.grid(self.parameters['Grid'])
+
+        if self.parameters['y1 Overlay']:
+            self.axes.add_line(self.y1_overlay_min)
+            self.axes.add_line(self.y1_overlay_max)
+
+        if self.parameters['y2 Overlay'] and self.parameters['y2_axe'] != 'Disabled':
+            self.second_axes.add_line(self.y2_overlay_min)
+            self.second_axes.add_line(self.y2_overlay_max)
+
+        self.axes_plot =self.axes.plot(
+            x,
+            y1,
+            linewidth=1,
+            color=self.parameters['y1 line Color'],
+            label=self.parameters['y1 axis title']
+        )
+        if self.parameters['legend']:
+            self.axes.legend(loc=3)
+
+        if self.parameters['y2_axe'] != 'Disabled':
+            self.second_axes_plot = self.second_axes.plot(
+                x,
+                y2,
+                linewidth=1,
+                color=self.parameters['y2 line Color'],
+                label=self.parameters['y2 axis title']
+            )
+            if self.parameters['legend']:
+                self.second_axes.legend(loc=1)
+        self.pref_figure.tight_layout()
+        self.draw()
+
+    def Time_based_add_second_axes(self):
+        self.second_axes = self.axes.twinx()
+        self.second_axes.set_ylabel(self.parameters['y2 axis title'])
+        pylab.setp(self.second_axes.get_yticklabels(), fontsize=8)
+
+        x = list(np.arange(55, 155, 1))
+        y2 = [6000] * 25 + list(np.arange(6000, 2000, -80)) + [2000] * 25
+        if self.parameters['y2 Overlay']:
+            self.y2_overlay_max = lines.Line2D(x,
+                                          [8000] * 100,
+                                          linewidth=1,
+                                          color=self.parameters['y2 Overlay Color'],
+                                          label='y2 Overlay'
+                                          )
+            self.y2_overlay_min = lines.Line2D(x,
+                                          [1000] * 100,
+                                          linewidth=1,
+                                          color=self.parameters['y2 Overlay Color']
+                                          )
+        if self.parameters['y2 Overlay']:
+            self.second_axes.add_line(self.y2_overlay_min)
+            self.second_axes.add_line(self.y2_overlay_max)
+        self.second_axes_plot = self.second_axes.plot(
+            x,
+            y2,
+            linewidth=1,
+            color=self.parameters['y2 line Color'],
+            label=self.parameters['y2 axis title']
+        )
+        if self.parameters['legend']:
+            self.second_axes.legend(loc=1)
+        self.pref_figure.tight_layout()
+        self.draw()
+
+    def Time_based_add_y1_overlay(self):
+        x = list(np.arange(55, 155, 1))
+        self.y1_overlay_max = lines.Line2D(x,
+                                           [200] * 100,
+                                           linewidth=1,
+                                           color=self.parameters['y1 Overlay Color'],
+                                           label='y1 Overlay'
+                                           )
+        self.y1_overlay_min = lines.Line2D(x,
+                                           [25] * 100,
+                                           linewidth=1,
+                                           color=self.parameters['y1 Overlay Color']
+                                           )
+        self.axes.add_line(self.y1_overlay_min)
+        self.axes.add_line(self.y1_overlay_max)
+
+        self.pref_figure.tight_layout()
+        self.draw()
+
+    def Time_based_add_y2_overlay(self):
+        x = list(np.arange(55, 155, 1))
+        self.y2_overlay_max = lines.Line2D(x,
+                                      [8000] * 100,
+                                      linewidth=1,
+                                      color=self.parameters['y2 Overlay Color'],
+                                      label='y2 Overlay'
+                                      )
+        self.y2_overlay_min = lines.Line2D(x,
+                                      [1000] * 100,
+                                      linewidth=1,
+                                      color=self.parameters['y2 Overlay Color']
+                                      )
+        self.second_axes.add_line(self.y2_overlay_min)
+        self.second_axes.add_line(self.y2_overlay_max)
+
+        self.pref_figure.tight_layout()
+        self.draw()
 
     def XY_Figure(self):
-        a = 0
+        self.axes = self.pref_figure.add_subplot(111)
+        self.axes.set_facecolor('white')
+        self.axes.set_title(self.title)
+        self.axes.set_ylabel(self.parameters['y axis title'])
+        self.axes.set_xlabel(self.parameters['x axis title'])
+        pylab.setp(self.axes.get_xticklabels(), fontsize=8)
+        pylab.setp(self.axes.get_yticklabels(), fontsize=8)
 
-    def CPF_Figure(self):
-        a = 0
+        x = [90, 91, 92, 93, 95, 97, 98, 99, 100, 102, 103, 105, 106, 108, 110, 112]
+        y_plot = [44, 44, 44, 44, 29, 11, 6, 1, 0, -2, -10, -26, -36, -44, -44, -44]
 
+        if self.parameters['Overlay']:
+            y = [44, 44, 44, 37, 22.32, 7.66, 0, 0, 0, 0, -7.33, -22, -29.32, -44, -44, -44]
+            y_max = []
+            y_min = []
+            for i in y:
+                if i >= 5 or i <= -5:
+                    y_max.append(i + 5)
+                    y_min.append(i - 5)
+                elif -5 < i < 5:
+                    y_max.append(5)
+                    y_min.append(-5)
+
+            self.overlay_max = lines.Line2D(x,
+                                            y_max,
+                                           linewidth=1,
+                                           color=self.parameters['Overlay Color'],
+                                           label='Overlay'
+                                           )
+            self.overlay_min = lines.Line2D(x,
+                                           y_min,
+                                           linewidth=1,
+                                           color=self.parameters['Overlay Color']
+                                           )
+
+        self.axes.grid(self.parameters['Grid'])
+
+        if self.parameters['Overlay']:
+            self.axes.add_line(self.overlay_min)
+            self.axes.add_line(self.overlay_max)
+
+        self.axes_plot = self.axes.plot(
+            x,
+            y_plot,
+            linewidth=0,
+            marker=MARKER[self.parameters['marker type']],
+            color=self.parameters['marker Color'],
+            label=self.parameters['y axis title']
+        )
+
+        self.pref_figure.tight_layout()
+        self.draw()
+
+    def XY_add_overlay(self):
+        x = [90, 91, 92, 93, 95, 97, 98, 99, 100, 102, 103, 105, 106, 108, 110, 112]
+        y = [44, 44, 44, 37, 22.32, 7.66, 0, 0, 0, 0, -7.33, -22, -29.32, -44, -44, -44]
+        y_max = []
+        y_min = []
+        for i in y:
+            if i >= 5 or i <= -5:
+                y_max.append(i + 5)
+                y_min.append(i - 5)
+            elif -5 < i < 5:
+                y_max.append(5)
+                y_min.append(-5)
+
+        self.overlay_max = lines.Line2D(x,
+                                        y_max,
+                                        linewidth=1,
+                                        color=self.parameters['Overlay Color'],
+                                        label='Overlay'
+                                        )
+        self.overlay_min = lines.Line2D(x,
+                                        y_min,
+                                        linewidth=1,
+                                        color=self.parameters['Overlay Color']
+                                        )
+        self.axes.add_line(self.overlay_min)
+        self.axes.add_line(self.overlay_max)
+
+        self.pref_figure.tight_layout()
+        self.draw()
 
 class GraphFrame(wx.Frame):
     """ The main frame of the application

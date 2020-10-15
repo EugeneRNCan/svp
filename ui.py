@@ -55,6 +55,8 @@ import svptreectrl as treectrl
 
 import RealTimePlotting as RTP
 
+
+
 '''
 import sunspec.core.util as util
 import sunspec.core.device as device_module
@@ -4129,34 +4131,6 @@ class RtppMainTab(wx.Panel):
         self.row_text.Bind(wx.EVT_TEXT_ENTER, self.DisplayUpdate)
         self.column_text.Bind(wx.EVT_TEXT_ENTER, self.DisplayUpdate)
 
-        static_line_dcb_1 = wx.StaticLine(self, style=wx.LI_HORIZONTAL)
-        self.display_control_buttons_sizer.Add(static_line_dcb_1, 0, wx.EXPAND)
-
-        controls_under_display_sizer = wx.BoxSizer(wx.HORIZONTAL)
-
-        controls_und_dis_1 = wx.BoxSizer(wx.VERTICAL)
-        control2 = wx.StaticText(self, label='CONTROL1')
-        controls_und_dis_1.Add(control2, 0, wx.EXPAND)
-        controls_under_display_sizer.Add(controls_und_dis_1, 1, wx.EXPAND | wx.ALIGN_LEFT)
-
-        static_line_cud_1 = wx.StaticLine(self, style= wx.LI_VERTICAL)
-        controls_under_display_sizer.Add(static_line_cud_1, 0, wx.EXPAND)
-
-        controls_und_dis_2 = wx.BoxSizer(wx.VERTICAL)
-        control3 = wx.StaticText(self, label='CONTROL2')
-        controls_und_dis_2.Add(control3, 0, wx.EXPAND)
-        controls_under_display_sizer.Add(controls_und_dis_2, 1, wx.EXPAND | wx.ALIGN_CENTER_HORIZONTAL)
-
-        static_line_cud_2 = wx.StaticLine(self, style=wx.LI_VERTICAL)
-        controls_under_display_sizer.Add(static_line_cud_2, 0, wx.EXPAND)
-
-        controls_und_dis_3 = wx.BoxSizer(wx.VERTICAL)
-        control4 = wx.StaticText(self, label='CONTROL3')
-        controls_und_dis_3.Add(control4, 0, wx.EXPAND)
-        controls_under_display_sizer.Add(controls_und_dis_3, 1, wx.EXPAND | wx.ALIGN_RIGHT)
-
-        self.display_control_buttons_sizer.Add(controls_under_display_sizer, 1, wx.EXPAND)
-
         self.main_sizer.Add(self.display_control_buttons_sizer, 2, wx.EXPAND)
 
         self.SetSizer(self.main_sizer)
@@ -4197,6 +4171,28 @@ class RtppMainTab(wx.Panel):
 
         self.number_of_other_tab = int(self.column_text.GetValue()) * int(self.row_text.GetValue())
 
+        save_layout_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.save_layout_text = wx.TextCtrl(self)
+        self.save_layout_text.Bind(wx.EVT_TEXT, self.Save_layout_text_update)
+        self.save_layout_button = wx.Button(self, label='Save Layout')
+        self.save_layout_button.Bind(wx.EVT_BUTTON, self.Save_layout_button_on)
+        self.save_layout_button.Disable()
+        save_layout_sizer.Add(self.save_layout_text, 1, wx.ALIGN_CENTER_VERTICAL)
+        save_layout_sizer.Add(self.save_layout_button, 0, wx.ALIGN_LEFT )
+        control_sizer.Add(save_layout_sizer, 0, wx.ALL, 5)
+
+        load_layout_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.load_layout_combo = wx.ComboBox(self)
+        self.load_layout_button = wx.Button(self, label='Load Layout')
+        load_layout_sizer.Add(self.load_layout_combo, 1, wx.ALIGN_CENTER_VERTICAL)
+        load_layout_sizer.Add(self.load_layout_button, 0, wx.ALIGN_LEFT)
+        control_sizer.Add(load_layout_sizer, 0, wx.ALL, 5)
+
+    def Save_layout_text_update(self, evt):
+        self.save_layout_button.Enable()
+
+    def Save_layout_button_on(self, evt):
+        a=0
 
     def DisplayUpdate(self, evt):
         new_disp_sizer = self.DisplaySetUp()
@@ -4208,6 +4204,7 @@ class RtppMainTab(wx.Panel):
         self.number_of_other_tab = int(self.column_text.GetValue()) * int(self.row_text.GetValue())
         self.GetParent().GetParent().RtppUpdateOtherTab()
         self.Update_Graph_titles()
+
 
     def DisplaySetUp(self):
         sizer = wx.BoxSizer(wx.VERTICAL)
@@ -4298,7 +4295,7 @@ class RtppOtherTab(wx.Panel):
 
         plot_type_sizer = wx.BoxSizer(wx.HORIZONTAL)
         plot_type_static = wx.StaticText(self, label='Type of plot : ')
-        self.plot_type_combo = wx.ComboBox(self, value='Disabled', choices=['XY', 'Time-based', 'CPF', 'Disabled'])
+        self.plot_type_combo = wx.ComboBox(self, value='Disabled', choices=['XY', 'Time-based', 'Disabled'])
         plot_type_sizer.Add(plot_type_static, 1, wx.ALIGN_CENTER_VERTICAL)
         plot_type_sizer.Add(self.plot_type_combo, 0, wx.ALIGN_LEFT)
         self.control_sizer.Add(plot_type_sizer, 0, wx.ALL, 5)
@@ -4306,7 +4303,8 @@ class RtppOtherTab(wx.Panel):
     def title_update_enter(self, evt):
         self.parent.SetPageText(self.parent.FindPage(self.parent.GetCurrentPage()), self.title_text.GetValue())
         self.parent.GetPage(0).graph_type[int(self.row) - 1][int(self.column) - 1].SetLabel(self.title_text.GetValue())
-        self.display_Text.SetLabel(self.title_text.GetValue())
+        self.display.axes.set_title(self.title_text.GetValue())
+        self.GraphResize(evt=None)
         self.title = self.title_text.GetValue()
 
     def Base_update_tab_config(self):
@@ -4346,7 +4344,7 @@ class RtppOtherTab(wx.Panel):
 
         plot_type_sizer = wx.BoxSizer(wx.HORIZONTAL)
         plot_type_sizer.Add(wx.StaticText(self, label='Type of plot : '), 1, wx.ALIGN_CENTER_VERTICAL)
-        self.plot_type_combo = wx.ComboBox(self, value=self.plot_type, choices=['XY', 'Time-based', 'CPF', 'Disabled'])
+        self.plot_type_combo = wx.ComboBox(self, value=self.plot_type, choices=['XY', 'Time-based', 'Disabled'])
         plot_type_sizer.Add(self.plot_type_combo, 0, wx.ALIGN_LEFT)
         self.control_sizer.Add(plot_type_sizer, 0, wx.ALL, 5)
 
@@ -4393,11 +4391,13 @@ class RtppOtherTab(wx.Panel):
         self.static_line_main = wx.StaticLine(self, style=wx.LI_VERTICAL)
         self.main_sizer.Add(self.static_line_main, 0, wx.EXPAND)
 
-        self.display_Text = wx.StaticText(self, label=self.title_text.GetValue())
-        self.display_control_buttons_sizer.Add(self.display_Text, 2, wx.EXPAND)
-
-        self.display = RTP.Preference_canvas(self)
-        self.display_control_buttons_sizer.Add(self.display, 2, wx.EXPAND)
+        self.display_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.display = RTP.Preference_canvas(self, size=self.GetParent().GetParent().GetSize(),
+                                             title=self.title_text.GetValue())
+        self.display_sizer.Add(self.display, 1, wx.EXPAND | wx.ALL, 5)
+        self.Bind(wx.EVT_SIZE, self.GraphResize)
+        self.GetParent().Bind(wx.EVT_MAXIMIZE, self.GraphResize)
+        self.display_control_buttons_sizer.Add(self.display_sizer, 2, wx.EXPAND)
 
         static_line_dcb_1 = wx.StaticLine(self, style=wx.LI_HORIZONTAL)
         self.display_control_buttons_sizer.Add(static_line_dcb_1, 0, wx.EXPAND)
@@ -4433,6 +4433,8 @@ class RtppOtherTab(wx.Panel):
         self.Layout()
         self.GetParent().GetParent().sizer.Layout()
 
+        self.GraphResize(evt=None)
+
     def XY_General_setup(self, general_control_sizer):
         general_control_sizer.Add(wx.StaticText(self, label='General Plot Setting :'))
 
@@ -4440,23 +4442,36 @@ class RtppOtherTab(wx.Panel):
         grid_static = wx.StaticText(self, label='With Grid : ')
         self.grid_checkbox = wx.CheckBox(self)
         self.grid_checkbox.SetValue(True)
+        self.grid_checkbox.Bind(wx.EVT_CHECKBOX, self.Grid_update)
         self.parameters['Grid'] = self.grid_checkbox.GetValue()
         grid_sizer.Add(grid_static, 1, wx.ALIGN_CENTER_VERTICAL)
         grid_sizer.Add(self.grid_checkbox, 0, wx.ALIGN_LEFT)
         general_control_sizer.Add(grid_sizer, 0, wx.ALL, 5)
 
-        color_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        color_static = wx.StaticText(self, label='line Color : ')
-        self.color_combo = wx.ComboBox(self, value='Black', choices=['Black', 'Red', 'Blue', 'Green', 'Yellow'])
-        self.parameters['line Color'] = self.color_combo.GetValue()
-        color_sizer.Add(color_static, 1, wx.ALIGN_CENTER_VERTICAL)
-        color_sizer.Add(self.color_combo, 0, wx.ALIGN_LEFT)
-        general_control_sizer.Add(color_sizer, 0, wx.ALL, 5)
+        marker_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        marker_static = wx.StaticText(self, label='marker type : ')
+        self.marker_combo = wx.ComboBox(self, value='Circle',
+                                       choices=['Point', 'Circle', 'Triangle', 'Tri', 'Octagon', 'Square', 'Pentagone', 'Star', 'Diamond', 'Plus'])
+        self.marker_combo.Bind(wx.EVT_COMBOBOX_CLOSEUP, self.XY_marker_update)
+        self.parameters['marker type'] = self.marker_combo.GetValue()
+        marker_sizer.Add(marker_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        marker_sizer.Add(self.marker_combo, 0, wx.ALIGN_LEFT)
+        general_control_sizer.Add(marker_sizer, 0, wx.ALL, 5)
+
+        marker_color_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        marker_color_static = wx.StaticText(self, label='marker Color : ')
+        self.marker_color_combo = wx.ComboBox(self, value='Black', choices=['Black', 'Red', 'Blue', 'Green', 'Yellow', 'Cyan', 'Magenta', 'white'])
+        self.marker_color_combo.Bind(wx.EVT_COMBOBOX_CLOSEUP, self.XY_marker_color_update)
+        self.parameters['marker Color'] = self.marker_color_combo.GetValue()
+        marker_color_sizer.Add(marker_color_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        marker_color_sizer.Add(self.marker_color_combo, 0, wx.ALIGN_LEFT)
+        general_control_sizer.Add(marker_color_sizer, 0, wx.ALL, 5)
 
         overlay_sizer = wx.BoxSizer(wx.HORIZONTAL)
         overlay_static = wx.StaticText(self, label='With Overlay : ')
         self.overlay_checkbox = wx.CheckBox(self)
         self.overlay_checkbox.SetValue(True)
+        self.overlay_checkbox.Bind(wx.EVT_CHECKBOX, self.XY_Overlay_update)
         self.parameters['Overlay'] = self.overlay_checkbox.GetValue()
         overlay_sizer.Add(overlay_static, 1, wx.ALIGN_CENTER_VERTICAL)
         overlay_sizer.Add(self.overlay_checkbox, 0, wx.ALIGN_LEFT)
@@ -4465,11 +4480,43 @@ class RtppOtherTab(wx.Panel):
         overlay_color_sizer = wx.BoxSizer(wx.HORIZONTAL)
         overlay_color_static = wx.StaticText(self, label='Overlay Color : ')
         self.overlay_color_combo = wx.ComboBox(self, value='Red',
-                                                  choices=['Black', 'Red', 'Blue', 'Green', 'Yellow'])
+                                                  choices=['Black', 'Red', 'Blue', 'Green', 'Yellow', 'Cyan', 'Magenta', 'white'])
+        self.overlay_color_combo.Bind(wx.EVT_COMBOBOX_CLOSEUP, self.XY_Overlay_line_color_update)
         self.parameters['Overlay Color'] = self.overlay_color_combo.GetValue()
         overlay_color_sizer.Add(overlay_color_static, 1, wx.ALIGN_CENTER_VERTICAL)
         overlay_color_sizer.Add(self.overlay_color_combo, 0, wx.ALIGN_LEFT)
         general_control_sizer.Add(overlay_color_sizer, 0, wx.ALL, 5)
+
+    def XY_marker_update(self, evt):
+        self.display.axes_plot[0].set_marker(RTP.MARKER[self.marker_combo.GetValue()])
+        self.parameters['marker type'] = self.marker_combo.GetValue()
+        self.display.parameters['marker type'] = self.marker_combo.GetValue()
+        self.GraphResize(evt=None)
+
+    def XY_marker_color_update(self, evt):
+        self.display.axes_plot[0].set_color(self.marker_color_combo.GetValue())
+        self.parameters['marker Color'] = self.marker_color_combo.GetValue()
+        self.display.parameters['marker Color'] = self.marker_color_combo.GetValue()
+        self.GraphResize(evt=None)
+
+    def XY_Overlay_update(self, evt):
+        if self.overlay_checkbox.GetValue():
+            self.display.XY_add_overlay()
+            self.overlay_color_combo.Enable()
+        else:
+            self.display.overlay_max.remove()
+            self.display.overlay_min.remove()
+            self.overlay_color_combo.Disable()
+        self.parameters['Overlay'] = self.overlay_checkbox.GetValue()
+        self.display.parameters['Overlay'] = self.overlay_checkbox.GetValue()
+        self.GraphResize(evt=None)
+
+    def XY_Overlay_line_color_update(self, evt):
+        self.display.overlay_max.set_color(self.overlay_color_combo.GetValue())
+        self.display.overlay_min.set_color(self.overlay_color_combo.GetValue())
+        self.parameters['Overlay Color'] = self.overlay_color_combo.GetValue()
+        self.display.parameters['Overlay Color'] = self.overlay_color_combo.GetValue()
+        self.GraphResize(evt=None)
 
     def XY_X_setup(self, x_control_sizer):
 
@@ -4477,12 +4524,12 @@ class RtppOtherTab(wx.Panel):
 
         x_axis_title_sizer = wx.BoxSizer(wx.HORIZONTAL)
         x_axis_title_static = wx.StaticText(self, label='x axis title : ')
-        self.x_axis_title_text = wx.TextCtrl(self, value='X axis')
+        self.x_axis_title_text = wx.TextCtrl(self, value='X axis', style=wx.TE_PROCESS_ENTER)
+        self.x_axis_title_text.Bind(wx.EVT_TEXT_ENTER, self.X_axis_update)
         self.parameters['x axis title'] = self.x_axis_title_text.GetValue()
         x_axis_title_sizer.Add(x_axis_title_static, 1, wx.ALIGN_CENTER_VERTICAL)
         x_axis_title_sizer.Add(self.x_axis_title_text, 0, wx.ALIGN_LEFT)
         x_control_sizer.Add(x_axis_title_sizer, 0, wx.ALL, 5)
-
 
 
     def XY_Y_setup(self, y_control_sizer):
@@ -4490,11 +4537,18 @@ class RtppOtherTab(wx.Panel):
 
         y_axis_title_sizer = wx.BoxSizer(wx.HORIZONTAL)
         y_axis_title_static = wx.StaticText(self, label='y axis title : ')
-        self.y_axis_title_text = wx.TextCtrl(self, value='y axis')
+        self.y_axis_title_text = wx.TextCtrl(self, value='y axis', style=wx.TE_PROCESS_ENTER)
+        self.y_axis_title_text.Bind(wx.EVT_TEXT_ENTER, self.XY_Y_axis_update)
         self.parameters['y axis title'] = self.y_axis_title_text.GetValue()
         y_axis_title_sizer.Add(y_axis_title_static, 1, wx.ALIGN_CENTER_VERTICAL)
         y_axis_title_sizer.Add(self.y_axis_title_text, 0, wx.ALIGN_LEFT)
         y_control_sizer.Add(y_axis_title_sizer, 0, wx.ALL, 5)
+
+    def XY_Y_axis_update(self, evt):
+        self.display.axes.set_ylabel(self.y_axis_title_text.GetValue())
+        self.parameters['y axis title'] = self.y_axis_title_text.GetValue()
+        self.display.parameters['y axis title'] = self.y_axis_title_text.GetValue()
+        self.GraphResize(evt=None)
 
     def Update_Time_based_plot_type_config(self):
 
@@ -4529,11 +4583,13 @@ class RtppOtherTab(wx.Panel):
         self.static_line_main = wx.StaticLine(self, style=wx.LI_VERTICAL)
         self.main_sizer.Add(self.static_line_main, 0, wx.EXPAND)
 
-        self.display_Text = wx.StaticText(self, label=self.title_text.GetValue())
-        self.display_control_buttons_sizer.Add(self.display_Text, 2, wx.EXPAND)
-
-        self.display = RTP.Preference_canvas(self)
-        self.display_control_buttons_sizer.Add(self.display, 2, wx.EXPAND)
+        self.display_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.display = RTP.Preference_canvas(self, size=self.GetParent().GetParent().GetSize(),
+                                             title=self.title_text.GetValue())
+        self.display_sizer.Add(self.display, 1, wx.EXPAND | wx.ALL, 5)
+        self.Bind(wx.EVT_SIZE, self.GraphResize)
+        self.GetParent().Bind(wx.EVT_MAXIMIZE, self.GraphResize)
+        self.display_control_buttons_sizer.Add(self.display_sizer, 2, wx.EXPAND)
 
         static_line_dcb_1 = wx.StaticLine(self, style=wx.LI_HORIZONTAL)
         self.display_control_buttons_sizer.Add(static_line_dcb_1, 0, wx.EXPAND)
@@ -4569,6 +4625,8 @@ class RtppOtherTab(wx.Panel):
         self.Layout()
         self.GetParent().GetParent().sizer.Layout()
 
+        self.GraphResize(evt=None)
+
 
     def Time_based_General_and_x_control_SetUp(self, gen_x_control_sizer=None):
 
@@ -4576,8 +4634,9 @@ class RtppOtherTab(wx.Panel):
 
         x_axis_title_sizer = wx.BoxSizer(wx.HORIZONTAL)
         x_axis_title_static = wx.StaticText(self, label='x axis title : ')
-        self.x_axis_title_text = wx.TextCtrl(self, value='X axis')
+        self.x_axis_title_text = wx.TextCtrl(self, value='X axis', style=wx.TE_PROCESS_ENTER)
         self.parameters['x axis title'] = self.x_axis_title_text.GetValue()
+        self.x_axis_title_text.Bind(wx.EVT_TEXT_ENTER, self.X_axis_update)
         x_axis_title_sizer.Add(x_axis_title_static, 1, wx.ALIGN_CENTER_VERTICAL)
         x_axis_title_sizer.Add(self.x_axis_title_text, 0, wx.ALIGN_LEFT)
         gen_x_control_sizer.Add(x_axis_title_sizer, 0, wx.ALL, 5)
@@ -4586,10 +4645,21 @@ class RtppOtherTab(wx.Panel):
         grid_static = wx.StaticText(self, label='With Grid : ')
         self.grid_checkbox = wx.CheckBox(self)
         self.grid_checkbox.SetValue(True)
+        self.grid_checkbox.Bind(wx.EVT_CHECKBOX, self.Grid_update)
         self.parameters['Grid'] = self.grid_checkbox.GetValue()
         grid_sizer.Add(grid_static, 1, wx.ALIGN_CENTER_VERTICAL)
         grid_sizer.Add(self.grid_checkbox, 0, wx.ALIGN_LEFT)
         gen_x_control_sizer.Add(grid_sizer, 0, wx.ALL, 5)
+
+        legend_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        legend_static = wx.StaticText(self, label='With Legend : ')
+        self.legend_checkbox = wx.CheckBox(self)
+        self.legend_checkbox.SetValue(True)
+        self.legend_checkbox.Bind(wx.EVT_CHECKBOX, self.Time_based_Legend_update)
+        self.parameters['legend'] = self.legend_checkbox.GetValue()
+        legend_sizer.Add(legend_static, 1, wx.ALIGN_CENTER_VERTICAL)
+        legend_sizer.Add(self.legend_checkbox, 0, wx.ALIGN_LEFT)
+        gen_x_control_sizer.Add(legend_sizer, 0, wx.ALL, 5)
 
         x_min_sizer = wx.BoxSizer(wx.HORIZONTAL)
         x_min_static = wx.StaticText(self, label='x minimum : ')
@@ -4609,22 +4679,44 @@ class RtppOtherTab(wx.Panel):
         x_max_sizer.Add(self.x_max_text, 0, wx.ALIGN_LEFT)  # need to disable it when auto is selected
         gen_x_control_sizer.Add(x_max_sizer, 0, wx.ALL, 5)
 
+    def Time_based_Legend_refresh(self):
+        self.display.axes.get_legend().remove()
+        self.display.axes.legend(loc=3)
+        if self.y2_value_combo.GetValue() != 'Disabled':
+            self.display.second_axes.get_legend().remove()
+            self.display.second_axes.legend(loc=1)
+
+    def Time_based_Legend_update(self, evt):
+        if self.legend_checkbox.GetValue():
+            self.display.axes.legend(loc=3)
+            if self.y2_value_combo.GetValue() != 'Disabled':
+                self.display.second_axes.legend(loc=1)
+        else:
+            self.display.axes.get_legend().remove()
+            if self.y2_value_combo.GetValue() != 'Disabled':
+                self.display.second_axes.get_legend().remove()
+        self.display.parameters['legend'] = self.legend_checkbox.GetValue()
+        self.parameters['legend'] = self.legend_checkbox.GetValue()
+        self.GraphResize(evt=None)
+
     def Time_based_Y1_control_SetUp(self, y1_control_sizer=None):
 
         y1_control_sizer.Add(wx.StaticText(self, label='y1 value Plot Setting :'))
 
         y1_axis_title_sizer = wx.BoxSizer(wx.HORIZONTAL)
         y1_axis_title_static = wx.StaticText(self, label='y1 axis title : ')
-        self.y1_axis_title_text = wx.TextCtrl(self, value='y1 axis')
+        self.y1_axis_title_text = wx.TextCtrl(self, value='y1 axis', style=wx.TE_PROCESS_ENTER)
         self.parameters['y1 axis title'] = self.y1_axis_title_text.GetValue()
+        self.y1_axis_title_text.Bind(wx.EVT_TEXT_ENTER, self.Time_based_Y1_axis_update)
         y1_axis_title_sizer.Add(y1_axis_title_static, 1, wx.ALIGN_CENTER_VERTICAL)
         y1_axis_title_sizer.Add(self.y1_axis_title_text, 0, wx.ALIGN_LEFT)
         y1_control_sizer.Add(y1_axis_title_sizer, 0, wx.ALL, 5)
 
         y1_color_sizer = wx.BoxSizer(wx.HORIZONTAL)
         y1_color_static = wx.StaticText(self, label='y1 line Color : ')
-        self.y1_color_combo = wx.ComboBox(self, value='Black', choices=['Black', 'Red', 'Blue', 'Green', 'Yellow'])
+        self.y1_color_combo = wx.ComboBox(self, value='Black', choices=['Black', 'Red', 'Blue', 'Green', 'Yellow', 'Cyan', 'Magenta', 'white'])
         self.parameters['y1 line Color'] = self.y1_color_combo.GetValue()
+        self.y1_color_combo.Bind(wx.EVT_COMBOBOX_CLOSEUP, self.Time_based_Y1_line_color_update)
         y1_color_sizer.Add(y1_color_static, 1, wx.ALIGN_CENTER_VERTICAL)
         y1_color_sizer.Add(self.y1_color_combo, 0, wx.ALIGN_LEFT)
         y1_control_sizer.Add(y1_color_sizer, 0, wx.ALL, 5)
@@ -4633,6 +4725,7 @@ class RtppOtherTab(wx.Panel):
         y1_overlay_static = wx.StaticText(self, label='With Overlay : ')
         self.y1_overlay_checkbox = wx.CheckBox(self)
         self.y1_overlay_checkbox.SetValue(True)
+        self.y1_overlay_checkbox.Bind(wx.EVT_CHECKBOX, self.Time_based_Y1_Overlay_update)
         self.parameters['y1 Overlay'] = self.y1_overlay_checkbox.GetValue()
         y1_overlay_sizer.Add(y1_overlay_static, 1, wx.ALIGN_CENTER_VERTICAL)
         y1_overlay_sizer.Add(self.y1_overlay_checkbox, 0, wx.ALIGN_LEFT)
@@ -4640,8 +4733,9 @@ class RtppOtherTab(wx.Panel):
 
         y1_overlay_color_sizer = wx.BoxSizer(wx.HORIZONTAL)
         y1_overlay_color_static = wx.StaticText(self, label='y1 Overlay Color : ')
-        self.y1_overlay_color_combo = wx.ComboBox(self, value='Red', choices=['Black', 'Red', 'Blue', 'Green', 'Yellow'])
+        self.y1_overlay_color_combo = wx.ComboBox(self, value='Red', choices=['Black', 'Red', 'Blue', 'Green', 'Yellow', 'Cyan', 'Magenta', 'white'])
         self.parameters['y1 Overlay Color'] = self.y1_overlay_color_combo.GetValue()
+        self.y1_overlay_color_combo.Bind(wx.EVT_COMBOBOX_CLOSEUP, self.Time_based_Y1_Overlay_line_color_update)
         y1_overlay_color_sizer.Add(y1_overlay_color_static, 1, wx.ALIGN_CENTER_VERTICAL)
         y1_overlay_color_sizer.Add(self.y1_overlay_color_combo, 0, wx.ALIGN_LEFT)
         y1_control_sizer.Add(y1_overlay_color_sizer, 0, wx.ALL, 5)
@@ -4664,13 +4758,48 @@ class RtppOtherTab(wx.Panel):
         y1_max_sizer.Add(self.y1_max_text, 0, wx.ALIGN_LEFT)  # need to disable it when auto is selected
         y1_control_sizer.Add(y1_max_sizer, 0, wx.ALL, 5)
 
+    def Time_based_Y1_axis_update(self, evt):
+        self.display.axes.set_ylabel(self.y1_axis_title_text.GetValue())
+        self.parameters['y1 axis title'] = self.y1_axis_title_text.GetValue()
+        self.display.parameters['y1 axis title'] = self.y1_axis_title_text.GetValue()
+        self.GraphResize(evt=None)
+
+    def Time_based_Y1_line_color_update(self, evt):
+        self.display.axes_plot[0].set_color(self.y1_color_combo.GetValue())
+        self.parameters['y1 line color'] = self.y1_color_combo.GetValue()
+        self.display.parameters['y1 line color'] = self.y1_color_combo.GetValue()
+        self.Time_based_Legend_refresh()
+        self.GraphResize(evt=None)
+
+    def Time_based_Y1_Overlay_update(self, evt):
+        if self.y1_overlay_checkbox.GetValue():
+            self.display.Time_based_add_y1_overlay()
+            self.y1_overlay_color_combo.Enable()
+        else:
+            self.display.y1_overlay_max.remove()
+            self.display.y1_overlay_min.remove()
+            self.y1_overlay_color_combo.Disable()
+        self.Time_based_Legend_refresh()
+        self.parameters['y1 Overlay'] = self.y1_overlay_checkbox.GetValue()
+        self.display.parameters['y1 Overlay'] = self.y1_overlay_checkbox.GetValue()
+        self.GraphResize(evt=None)
+
+    def Time_based_Y1_Overlay_line_color_update(self, evt):
+        self.display.y1_overlay_max.set_color(self.y1_overlay_color_combo.GetValue())
+        self.display.y1_overlay_min.set_color(self.y1_overlay_color_combo.GetValue())
+        self.parameters['y1 Overlay Color'] = self.y1_overlay_color_combo.GetValue()
+        self.display.parameters['y1 Overlay Color'] = self.y1_overlay_color_combo.GetValue()
+        self.Time_based_Legend_refresh()
+        self.GraphResize(evt=None)
+
     def Time_based_Y2_control_SetUp(self, y2_control_sizer=None):
         y2_control_sizer.Add(wx.StaticText(self, label=' Setting :'))
 
         y2_axis_title_sizer = wx.BoxSizer(wx.HORIZONTAL)
         y2_axis_title_static = wx.StaticText(self, label='y2 axis title : ')
-        self.y2_axis_title_text = wx.TextCtrl(self, value='Y2 axis')
-        self.parameters['x axis title']= self.y2_axis_title_text.GetValue()
+        self.y2_axis_title_text = wx.TextCtrl(self, value='y2 axis', style=wx.TE_PROCESS_ENTER)
+        self.parameters['y2 axis title'] = self.y2_axis_title_text.GetValue()
+        self.y2_axis_title_text.Bind(wx.EVT_TEXT_ENTER, self.Time_based_Y2_axis_update)
         self.y2_axis_title_text.Disable()
         y2_axis_title_sizer.Add(y2_axis_title_static, 1, wx.ALIGN_CENTER_VERTICAL)
         y2_axis_title_sizer.Add(self.y2_axis_title_text, 0, wx.ALIGN_LEFT)
@@ -4678,8 +4807,9 @@ class RtppOtherTab(wx.Panel):
 
         y2_color_sizer = wx.BoxSizer(wx.HORIZONTAL)
         y2_color_static = wx.StaticText(self, label='y2 line Color : ')
-        self.y2_color_combo = wx.ComboBox(self, value='Green', choices=['Black', 'Red', 'Blue', 'Green', 'Yellow'])
+        self.y2_color_combo = wx.ComboBox(self, value='Green', choices=['Black', 'Red', 'Blue', 'Green', 'Yellow', 'Cyan', 'Magenta', 'white'])
         self.parameters['y2 line Color'] = self.y2_color_combo.GetValue()
+        self.y2_color_combo.Bind(wx.EVT_COMBOBOX_CLOSEUP, self.Time_based_Y2_line_color_update)
         self.y2_color_combo.Disable()
         y2_color_sizer.Add(y2_color_static, 1, wx.ALIGN_CENTER_VERTICAL)
         y2_color_sizer.Add(self.y2_color_combo, 0, wx.ALIGN_LEFT)
@@ -4689,7 +4819,8 @@ class RtppOtherTab(wx.Panel):
         y2_overlay_static = wx.StaticText(self, label='With overlay : ')
         self.y2_overlay_checkbox = wx.CheckBox(self)
         self.y2_overlay_checkbox.SetValue(True)
-        self.parameters['Overlay'] = self.y2_overlay_checkbox.GetValue()
+        self.parameters['y2 Overlay'] = self.y2_overlay_checkbox.GetValue()
+        self.y2_overlay_checkbox.Bind(wx.EVT_CHECKBOX, self.Time_based_Y2_Overlay_update)
         self.y2_overlay_checkbox.Disable()
         y2_overlay_sizer.Add(y2_overlay_static, 1, wx.ALIGN_CENTER_VERTICAL)
         y2_overlay_sizer.Add(self.y2_overlay_checkbox, 0, wx.ALIGN_LEFT)
@@ -4697,8 +4828,9 @@ class RtppOtherTab(wx.Panel):
 
         y2_overlay_color_sizer = wx.BoxSizer(wx.HORIZONTAL)
         y2_overlay_color_static = wx.StaticText(self, label='y2 Overlay Color : ')
-        self.y2_overlay_color_combo = wx.ComboBox(self, value='Blue', choices=['Black', 'Red', 'Blue', 'Green', 'Yellow'])
+        self.y2_overlay_color_combo = wx.ComboBox(self, value='Blue', choices=['Black', 'Red', 'Blue', 'Green', 'Yellow', 'Cyan', 'Magenta', 'white'])
         self.parameters['y2 Overlay Color'] = self.y2_overlay_color_combo.GetValue()
+        self.y2_overlay_color_combo.Bind(wx.EVT_COMBOBOX_CLOSEUP, self.Time_based_Y2_Overlay_line_color_update)
         self.y2_overlay_color_combo.Disable()
         y2_overlay_color_sizer.Add(y2_overlay_color_static, 1, wx.ALIGN_CENTER_VERTICAL)
         y2_overlay_color_sizer.Add(self.y2_overlay_color_combo, 0, wx.ALIGN_LEFT)
@@ -4726,6 +4858,40 @@ class RtppOtherTab(wx.Panel):
         y2_max_sizer.Add(self.y2_max_text, 0, wx.ALIGN_LEFT)  # need to disable it when auto is selected
         y2_control_sizer.Add(y2_max_sizer, 0, wx.ALL, 5)
 
+    def Time_based_Y2_axis_update(self, evt):
+        self.display.second_axes.set_ylabel(self.y2_axis_title_text.GetValue())
+        self.parameters['y2 axis title'] = self.y2_axis_title_text.GetValue()
+        self.display.parameters['y2 axis title'] = self.y2_axis_title_text.GetValue()
+        self.GraphResize(evt=None)
+
+    def Time_based_Y2_line_color_update(self, evt):
+        self.display.second_axes_plot[0].set_color(self.y2_color_combo.GetValue())
+        self.parameters['y2 line color'] = self.y2_color_combo.GetValue()
+        self.display.parameters['y2 line color'] = self.y2_color_combo.GetValue()
+        self.Time_based_Legend_refresh()
+        self.GraphResize(evt=None)
+
+    def Time_based_Y2_Overlay_update(self, evt):
+        if self.y2_overlay_checkbox.GetValue():
+            self.display.Time_based_add_y2_overlay()
+            self.y2_overlay_color_combo.Enable()
+        else:
+            self.display.y2_overlay_max.remove()
+            self.display.y2_overlay_min.remove()
+            self.y2_overlay_color_combo.Disable()
+        self.Time_based_Legend_refresh()
+        self.parameters['y2 Overlay'] = self.y2_overlay_checkbox.GetValue()
+        self.display.parameters['y2 Overlay'] = self.y2_overlay_checkbox.GetValue()
+        self.GraphResize(evt=None)
+
+    def Time_based_Y2_Overlay_line_color_update(self, evt):
+        self.display.y2_overlay_max.set_color(self.y2_overlay_color_combo.GetValue())
+        self.display.y2_overlay_min.set_color(self.y2_overlay_color_combo.GetValue())
+        self.parameters['y2 Overlay Color'] = self.y2_overlay_color_combo.GetValue()
+        self.display.parameters['y2 Overlay Color'] = self.y2_overlay_color_combo.GetValue()
+        self.Time_based_Legend_refresh()
+        self.GraphResize(evt=None)
+
     def Time_based_Access_y2_control(self, evt):
         if self.y2_value_combo.GetValue() == 'Disabled':
             self.y2_axis_title_text.Disable()
@@ -4736,6 +4902,9 @@ class RtppOtherTab(wx.Panel):
             self.y2_min_text.Disable()
             self.y2_max_combo.Disable()
             self.y2_max_text.Disable()
+            self.display.pref_figure.delaxes(self.display.second_axes)
+            self.display.second_axes = None
+            self.GraphResize(evt=None)
         else:
             self.y2_axis_title_text.Enable()
             self.y2_color_combo.Enable()
@@ -4745,89 +4914,29 @@ class RtppOtherTab(wx.Panel):
             self.y2_min_text.Enable()
             self.y2_max_combo.Enable()
             self.y2_max_text.Enable()
+            if self.display.second_axes is None:
+                self.display.Time_based_add_second_axes()
 
-
-    def Update_CPF_plot_type_config(self):
-
-        self.parameters = {}
-        self.Base_update_tab_config()
-
-        PF_convention_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        PF_convention_static = wx.StaticText(self, label='PF Convention : ')
-        self.PF_convention_combo = wx.ComboBox(self, value='IEEE', choices=['IEEE', 'IEC', 'Sunspec'])
-        self.parameters['PF_convention'] = self.PF_convention_combo.GetValue()
-        PF_convention_sizer.Add(PF_convention_static, 1, wx.ALIGN_CENTER_VERTICAL)
-        PF_convention_sizer.Add(self.PF_convention_combo, 0, wx.ALIGN_LEFT)
-        self.control_sizer.Add(PF_convention_sizer, 0, wx.ALL, 5)
-
-        self.main_sizer.Add(self.control_sizer, 1, wx.EXPAND)
-
-        self.static_line_main = wx.StaticLine(self, style=wx.LI_VERTICAL)
-        self.main_sizer.Add(self.static_line_main, 0, wx.EXPAND)
-
-        self.display_Text = wx.StaticText(self, label=self.title_text.GetValue())
-        self.display_control_buttons_sizer.Add(self.display_Text, 0, wx.EXPAND)
-
-        self.display = RTP.Preference_canvas(self)
-        self.display_control_buttons_sizer.Add(self.display, 2, wx.EXPAND)
-
-        static_line_dcb_1 = wx.StaticLine(self, style=wx.LI_HORIZONTAL)
-        self.display_control_buttons_sizer.Add(static_line_dcb_1, 0, wx.EXPAND)
-
-        controls_under_display_sizer = wx.BoxSizer(wx.HORIZONTAL)
-
-        general_control_sizer = wx.BoxSizer(wx.VERTICAL)
-        self.CPF_General_setup(general_control_sizer)
-        controls_under_display_sizer.Add(general_control_sizer, 1, wx.EXPAND | wx.ALIGN_LEFT)
-
-        self.display_control_buttons_sizer.Add(controls_under_display_sizer, 1, wx.EXPAND)
-
-        self.main_sizer.Add(self.display_control_buttons_sizer, 2, wx.EXPAND)
-
-        self.plot_type_combo.Bind(wx.EVT_COMBOBOX_CLOSEUP, self.Update_tab_plot_type_config)
-
-        self.display.Create_Figure(type=self.plot_type, parameters=self.parameters)
-
+    def GraphResize(self, evt):
+        height = self.display_sizer.GetSize()[1] / self.display.pref_figure.get_dpi()
+        width = self.display_sizer.GetSize()[0] / self.display.pref_figure.get_dpi()
+        self.display.pref_figure.set_size_inches(width, height)
+        self.display.pref_figure.tight_layout()
+        self.display.draw()
         self.Layout()
-        self.GetParent().GetParent().sizer.Layout()
+        self.GetParent().Layout()
 
-    def CPF_General_setup(self, general_control_sizer):
-        general_control_sizer.Add(wx.StaticText(self, label='General Plot Setting :'))
+    def X_axis_update(self, evt):
+        self.display.axes.set_xlabel(self.x_axis_title_text.GetValue())
+        self.parameters['x axis title'] = self.x_axis_title_text.GetValue()
+        self.display.parameters['x axis title'] = self.x_axis_title_text.GetValue()
+        self.GraphResize(evt=None)
 
-        grid_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        grid_static = wx.StaticText(self, label='With Grid : ')
-        self.grid_checkbox = wx.CheckBox(self)
-        self.grid_checkbox.SetValue(True)
+    def Grid_update(self, evt):
+        self.display.axes.grid(self.grid_checkbox.GetValue())
+        self.display.parameters['Grid'] = self.grid_checkbox.GetValue()
         self.parameters['Grid'] = self.grid_checkbox.GetValue()
-        grid_sizer.Add(grid_static, 1, wx.ALIGN_CENTER_VERTICAL)
-        grid_sizer.Add(self.grid_checkbox, 0, wx.ALIGN_LEFT)
-        general_control_sizer.Add(grid_sizer, 0, wx.ALL, 5)
-
-        color_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        color_static = wx.StaticText(self, label='line Color : ')
-        self.color_combo = wx.ComboBox(self, value='Black', choices=['Black', 'Red', 'Blue', 'Green', 'Yellow'])
-        self.parameters['line Color'] = self.color_combo.GetValue()
-        color_sizer.Add(color_static, 1, wx.ALIGN_CENTER_VERTICAL)
-        color_sizer.Add(self.color_combo, 0, wx.ALIGN_LEFT)
-        general_control_sizer.Add(color_sizer, 0, wx.ALL, 5)
-
-        overlay_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        overlay_static = wx.StaticText(self, label='With Overlay : ')
-        self.overlay_checkbox = wx.CheckBox(self)
-        self.overlay_checkbox.SetValue(True)
-        self.parameters['Overlay'] = self.overlay_checkbox.GetValue()
-        overlay_sizer.Add(overlay_static, 1, wx.ALIGN_CENTER_VERTICAL)
-        overlay_sizer.Add(self.overlay_checkbox, 0, wx.ALIGN_LEFT)
-        general_control_sizer.Add(overlay_sizer, 0, wx.ALL, 5)
-
-        overlay_color_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        overlay_color_static = wx.StaticText(self, label='Overlay Color : ')
-        self.overlay_color_combo = wx.ComboBox(self, value='Red',
-                                               choices=['Black', 'Red', 'Blue', 'Green', 'Yellow'])
-        self.parameters['Overlay color'] = self.overlay_color_combo.GetValue()
-        overlay_color_sizer.Add(overlay_color_static, 1, wx.ALIGN_CENTER_VERTICAL)
-        overlay_color_sizer.Add(self.overlay_color_combo, 0, wx.ALIGN_LEFT)
-        general_control_sizer.Add(overlay_color_sizer, 0, wx.ALL, 5)
+        self.GraphResize(evt=None)
 
     def Update_tab_plot_type_config(self, evt):
 
@@ -4839,8 +4948,6 @@ class RtppOtherTab(wx.Panel):
                 self.Update_Time_based_plot_type_config()
             elif self.plot_type == 'XY':
                 self.Update_XY_plot_type_config()
-            elif self.plot_type == 'CPF':
-                self.Update_CPF_plot_type_config()
 
         except Exception as e:
             print('sunssvp: error: {}'.format((e)))
@@ -4858,7 +4965,7 @@ class RtppOtherTab(wx.Panel):
 
 class RtpPrefDialog(wx.Dialog):
     def __init__(self, entity=None, title=None):
-        wx.Dialog.__init__(self, parent=None, title='Real-Time Plotting', size=(900, 500),
+        wx.Dialog.__init__(self, parent=None, title='Real-Time Plotting', size=(900, 600),
                            style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER | wx.MINIMIZE_BOX | wx.MAXIMIZE_BOX)
 
         self.rtp_pref_nb = wx.Notebook(self, 0)
