@@ -4105,42 +4105,64 @@ class RtpPrefPanel(wx.Panel):
 
 class RtppMainTab(wx.Panel):
     def __init__(self, parent):
+        """
+            Initialize the Real-time Plotting General Setting Tab
+            :param parent : wx.Notebook, which is the parent of this tab panel
+
+        """
         wx.Panel.__init__(self, parent)
         self.parent = parent
 
-        self.main_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.main_sizer = wx.BoxSizer(wx.HORIZONTAL) #the Overall sizer
 
-        control_sizer = wx.BoxSizer(wx.VERTICAL)
+        control_sizer = wx.BoxSizer(wx.VERTICAL) #The sizer used for the controls on the left
 
-        self.display_control_buttons_sizer = wx.BoxSizer(wx.VERTICAL)
+        self.display_control_buttons_sizer = wx.BoxSizer(wx.VERTICAL) # The Sizer used for the Graph Display
 
+        #Adding the different widgets to the control sizer
         self.MainControlsSetup(control_sizer)
 
+        #Adding the control sizer to the Overall sizer
         self.main_sizer.Add(control_sizer, 1, wx.ALL | wx.SHAPED)
 
+        #Visual vertical line separation between the controls and the Graph Display
         static_line_main = wx.StaticLine(self, style=wx.LI_VERTICAL)
         self.main_sizer.Add(static_line_main, 0, wx.EXPAND)
 
+        #Adding the Graph display title to the Graph display sizer
         display_title = wx.StaticText(self, label='Real-time Plotting Plot Layout')
         self.display_control_buttons_sizer.Add(display_title, 0, wx.ALIGN_CENTER_HORIZONTAL)
         self.display_control_buttons_sizer.Add(wx.StaticLine(self, style=wx.LI_HORIZONTAL), 0, wx.EXPAND)
 
+        #Setting and adding the Graph display to the Graph display sizer
         self.display_sizer = self.DisplaySetUp()
         self.display_control_buttons_sizer.Add(self.display_sizer, 2, wx.EXPAND)
 
+        #Binding the row text and column test widget with the Graph Display update function
         self.row_text.Bind(wx.EVT_TEXT_ENTER, self.DisplayUpdate)
         self.column_text.Bind(wx.EVT_TEXT_ENTER, self.DisplayUpdate)
 
+        #Adding the Graph Display sizer to the Overall Sizer
         self.main_sizer.Add(self.display_control_buttons_sizer, 2, wx.EXPAND)
 
         self.SetSizer(self.main_sizer)
 
 
     def MainControlsSetup(self, control_sizer=None):
+        """
+            Set up the left control sizer with the good widgets
+            :param control_sizer : wx.BoxSizer(wx.Vertical), Sizer that contains the widgets of the left control of the
+            general setting tab
 
-        control1 = wx.StaticText(self, label='General Parameters')
+            :returns nothing
+
+        """
+
+
+        control1 = wx.StaticText(self, label='General Parameters') #general parameters title
         control_sizer.Add(control1, 0, wx.EXPAND | wx.ALL, 5)
 
+        #Initialising and adding the Real-time plotting mode combobox to the control sizer
         rtp_mode_sizer = wx.BoxSizer(wx.HORIZONTAL)
         rtp_mode_static = wx.StaticText(self, label='Real-Time Plotting mode : ')
         rtp_mode_combo = wx.ComboBox(self, value='Enabled' , choices=['Enabled', 'Disabled'])
@@ -4148,6 +4170,7 @@ class RtppMainTab(wx.Panel):
         rtp_mode_sizer.Add(rtp_mode_combo, 0, wx.ALIGN_LEFT)
         control_sizer.Add(rtp_mode_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the standard tested combobox to the control sizer
         standard_sizer = wx.BoxSizer(wx.HORIZONTAL)
         standard_static = wx.StaticText(self, label='Standard tested : ')
         standard_combo = wx.ComboBox(self, value='1547.1', choices=['1547.1', 'DR_AS_NZS_4777.2'])
@@ -4155,6 +4178,7 @@ class RtppMainTab(wx.Panel):
         standard_sizer.Add(standard_combo, 0, wx.ALIGN_LEFT)
         control_sizer.Add(standard_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the row text widget to the control sizer
         row_sizer = wx.BoxSizer(wx.HORIZONTAL)
         row_static = wx.StaticText(self, label='Row : ')
         self.row_text = wx.TextCtrl(self, value='2', style=wx.TE_PROCESS_ENTER, size=(20, -1))
@@ -4162,6 +4186,7 @@ class RtppMainTab(wx.Panel):
         row_sizer.Add(self.row_text, 0, wx.ALIGN_LEFT)
         control_sizer.Add(row_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the column text widget to the control sizer
         column_sizer = wx.BoxSizer(wx.HORIZONTAL)
         column_static = wx.StaticText(self, label='Column : ')
         self.column_text = wx.TextCtrl(self, value='1', style=wx.TE_PROCESS_ENTER, size=(20, -1))
@@ -4169,8 +4194,10 @@ class RtppMainTab(wx.Panel):
         column_sizer.Add(self.column_text, 0, wx.ALIGN_LEFT)
         control_sizer.Add(column_sizer, 0, wx.ALL, 5)
 
+        #Represent the number of tab needed depending on the number of row and columns
         self.number_of_other_tab = int(self.column_text.GetValue()) * int(self.row_text.GetValue())
 
+        # Initialising and adding the Save Layout option to the control sizer
         save_layout_sizer = wx.BoxSizer(wx.HORIZONTAL)
         self.save_layout_text = wx.TextCtrl(self)
         self.save_layout_text.Bind(wx.EVT_TEXT, self.Save_layout_text_update)
@@ -4181,6 +4208,7 @@ class RtppMainTab(wx.Panel):
         save_layout_sizer.Add(self.save_layout_button, 0, wx.ALIGN_LEFT )
         control_sizer.Add(save_layout_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the Load Layout option to the control sizer
         load_layout_sizer = wx.BoxSizer(wx.HORIZONTAL)
         self.load_layout_combo = wx.ComboBox(self)
         self.load_layout_button = wx.Button(self, label='Load Layout')
@@ -4189,24 +4217,55 @@ class RtppMainTab(wx.Panel):
         control_sizer.Add(load_layout_sizer, 0, wx.ALL, 5)
 
     def Save_layout_text_update(self, evt):
+        """
+            When someting is written in the Save Layout text widget, this function enable the save layout button
+
+            :returns nothing
+
+        """
         self.save_layout_button.Enable()
 
     def Save_layout_button_on(self, evt):
+        """
+            When the save layout button is clicked, this function save the current preference settings.
+
+            :returns nothing
+
+        """
+
         a=0
 
     def DisplayUpdate(self, evt):
+        """
+            Update the Graph display and Notebook when there is changes to the row or column text widgets
+
+            :returns nothing
+
+        """
+        #Set up a new Graph Display
         new_disp_sizer = self.DisplaySetUp()
+        #Remove the old Graph Display from the Graph Display sizer
         self.display_control_buttons_sizer.Hide(self.display_sizer)
         self.display_control_buttons_sizer.Remove(self.display_sizer)
+        #Insert the new Graph Display into the Graph Display sizer
         self.display_control_buttons_sizer.Insert(2, new_disp_sizer, 2, wx.EXPAND)
+        #Reinitialise the Panel's Graph Display attribute
         self.display_sizer = new_disp_sizer
+        #Readjust the panel
         self.Layout()
+        #Update the Notebook by adding the corresponding tabs and their positions
         self.number_of_other_tab = int(self.column_text.GetValue()) * int(self.row_text.GetValue())
         self.GetParent().GetParent().RtppUpdateOtherTab()
         self.Update_Graph_titles()
 
 
     def DisplaySetUp(self):
+        """
+            Set up the Graph Display, depending on the number of rows and column, also the title of each tab
+
+            :returns sixer: wx.BoxSizer(wx.VERTICAL) - contain the Graph Display of the General setting tab
+
+        """
         sizer = wx.BoxSizer(wx.VERTICAL)
         rows = int(self.row_text.GetValue())
         columns = int(self.column_text.GetValue())
@@ -4233,6 +4292,12 @@ class RtppMainTab(wx.Panel):
         return sizer
 
     def Update_Graph_titles(self):
+        """
+            Update the different plot titles inside the Graph Display
+
+            :returns nothing
+
+        """
         rows = int(self.row_text.GetValue())
         columns = int(self.column_text.GetValue())
         for row in range(0, rows):
@@ -4243,6 +4308,11 @@ class RtppMainTab(wx.Panel):
 
 class RtppOtherTab(wx.Panel):
     def __init__(self, parent):
+        """
+            Initialize a Real-time Plotting specific Setting Tab
+            :param parent : wx.Notebook, which is the parent of this tab panel
+
+        """
         wx.Panel.__init__(self, parent)
         self.title = 'Tab'
         self.row = '1'
@@ -4250,27 +4320,41 @@ class RtppOtherTab(wx.Panel):
         self.plot_type = 'Disabled'
         self.parent = parent
 
-        self.main_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.main_sizer = wx.BoxSizer(wx.HORIZONTAL) # the Overall sizer
 
-        self.control_sizer = wx.BoxSizer(wx.VERTICAL)
+        self.control_sizer = wx.BoxSizer(wx.VERTICAL) # the sizer used for the control on the left
 
+        # sizer for the display and the controls on the right
         self.display_control_buttons_sizer = wx.BoxSizer(wx.VERTICAL)
 
+        #Set up of the the left controls for any plot type
         self.MainControlsSetup()
 
+        #Adding the control sizer for the left controls
         self.main_sizer.Add(self.control_sizer, 1, wx.EXPAND)
 
+        #Initialising the tab in a the disabled plot type state, which means not dot display and right controls
         self.Initial_Disabled_tab_config()
 
+        #Binding the plot type combobox with a function that update the tab depending on the plot type selected
         self.plot_type_combo.Bind(wx.EVT_COMBOBOX_CLOSEUP, self.Update_tab_plot_type_config)
 
+        #Adjusting the Overall sizer to the window
         self.SetSizer(self.main_sizer)
 
     def MainControlsSetup(self):
+        """
+            Initialize The left control sizer for the basic Disabled plot type
 
-        parameters = wx.StaticText(self, label=self.title + ' Parameters :')
-        self.control_sizer.Add(parameters, 0, wx.EXPAND | wx.ALL, 5)
+            :returns Nothing
 
+        """
+
+        #Add the parameters title
+        self.control_title = wx.StaticText(self, label=self.title + ' Parameters :')
+        self.control_sizer.Add(self.control_title, 0, wx.EXPAND | wx.ALL, 5)
+
+        # Initialising and adding the Plot title text widget to the control sizer
         title_sizer = wx.BoxSizer(wx.HORIZONTAL)
         title_static = wx.StaticText(self, label='Plot title : ')
         self.title_text = wx.TextCtrl(self, value='Tab', style=wx.TE_PROCESS_ENTER)
@@ -4279,6 +4363,7 @@ class RtppOtherTab(wx.Panel):
         title_sizer.Add(self.title_text, 0, wx.ALIGN_LEFT)
         self.control_sizer.Add(title_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the row static text widget to the control sizer
         row_sizer = wx.BoxSizer(wx.HORIZONTAL)
         row_static = wx.StaticText(self, label='Row : ')
         self.row_text = wx.StaticText(self, label=self.row)
@@ -4286,6 +4371,7 @@ class RtppOtherTab(wx.Panel):
         row_sizer.Add(self.row_text,0)
         self.control_sizer.Add(row_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the column static text widget to the control sizer
         column_sizer = wx.BoxSizer(wx.HORIZONTAL)
         column_static = wx.StaticText(self, label='Column : ')
         self.column_text = wx.StaticText(self, label=self.column)
@@ -4293,6 +4379,7 @@ class RtppOtherTab(wx.Panel):
         column_sizer.Add(self.column_text, 0)
         self.control_sizer.Add(column_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the Plot type combobox to the control sizer
         plot_type_sizer = wx.BoxSizer(wx.HORIZONTAL)
         plot_type_static = wx.StaticText(self, label='Type of plot : ')
         self.plot_type_combo = wx.ComboBox(self, value='Disabled', choices=['XY', 'Time-based', 'Disabled'])
@@ -4301,28 +4388,49 @@ class RtppOtherTab(wx.Panel):
         self.control_sizer.Add(plot_type_sizer, 0, wx.ALL, 5)
 
     def title_update_enter(self, evt):
+        """
+            Reset the corresponding widget having the plot title as a name or label, when the plot title is changed.
+
+            :returns Nothing
+
+        """
         self.parent.SetPageText(self.parent.FindPage(self.parent.GetCurrentPage()), self.title_text.GetValue())
         self.parent.GetPage(0).graph_type[int(self.row) - 1][int(self.column) - 1].SetLabel(self.title_text.GetValue())
-        self.display.axes.set_title(self.title_text.GetValue())
-        self.GraphResize(evt=None)
+        if self.display is not None:
+            self.display.axes.set_title(self.title_text.GetValue())
+            self.GraphResize(evt=None)
         self.title = self.title_text.GetValue()
+        self.control_title.SetLabel(self.title + ' Parameters :')
+        self.Layout()
 
     def Base_update_tab_config(self):
 
+        """
+            Funtion used in the reconfiguration of the tab. It begins the process of resetting the whole tab layout to
+             correspond to the correct plot type. Also, initialise the common widget to all Plot type
+
+            :returns Nothing
+
+        """
+        # Removing the old left controls of the tab
         self.main_sizer.Hide(self.control_sizer)
         self.main_sizer.Remove(self.control_sizer)
         self.control_sizer = wx.BoxSizer(wx.VERTICAL)
 
+        #Removing the old display and left controls of the tab
         self.main_sizer.Hide(self.display_control_buttons_sizer)
         self.main_sizer.Remove(self.display_control_buttons_sizer)
         self.display_control_buttons_sizer = wx.BoxSizer(wx.VERTICAL)
 
+        #Removing the verticale line separating the left controls and the display from the tab
         self.main_sizer.Hide(self.static_line_main)
         self.static_line_main.Destroy()
 
-        parameters = wx.StaticText(self, label=self.title + ' Parameters :')
-        self.control_sizer.Add(parameters, 0, wx.EXPAND | wx.ALL, 5)
+        #Intialisaing the new left common controls
+        self.control_title = wx.StaticText(self, label=self.title + ' Parameters :')
+        self.control_sizer.Add(self.control_title, 0, wx.EXPAND | wx.ALL, 5)
 
+        #Initialising and adding the Plot title text widgets to the left controls sizer
         title_sizer = wx.BoxSizer(wx.HORIZONTAL)
         title_sizer.Add(wx.StaticText(self, label='Plot title : '), 1, wx.ALIGN_CENTER_VERTICAL)
         self.title_text = wx.TextCtrl(self, value=self.title, style=wx.TE_PROCESS_ENTER)
@@ -4330,18 +4438,21 @@ class RtppOtherTab(wx.Panel):
         title_sizer.Add(self.title_text, 0, wx.ALIGN_LEFT)
         self.control_sizer.Add(title_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the row static text widgets to the left controls sizer
         row_sizer = wx.BoxSizer(wx.HORIZONTAL)
         row_sizer.Add(wx.StaticText(self, label='Row : '), 0)
         self.row_text = wx.StaticText(self, label=self.row)
         row_sizer.Add(self.row_text, 0)
         self.control_sizer.Add(row_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the column static text widgets to the left controls sizer
         column_sizer = wx.BoxSizer(wx.HORIZONTAL)
         column_sizer.Add(wx.StaticText(self, label='Column : '), 0)
         self.column_text = wx.StaticText(self, label=self.column)
         column_sizer.Add(self.column_text, 0)
         self.control_sizer.Add(column_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the Plot type combobox to the left controls sizer
         plot_type_sizer = wx.BoxSizer(wx.HORIZONTAL)
         plot_type_sizer.Add(wx.StaticText(self, label='Type of plot : '), 1, wx.ALIGN_CENTER_VERTICAL)
         self.plot_type_combo = wx.ComboBox(self, value=self.plot_type, choices=['XY', 'Time-based', 'Disabled'])
@@ -4349,22 +4460,61 @@ class RtppOtherTab(wx.Panel):
         self.control_sizer.Add(plot_type_sizer, 0, wx.ALL, 5)
 
     def Update_Disabled_plot_type_config(self):
+        """
+            If the plot type is changed to 'Disabled' this function reset the tab to the Disabled layout.
+
+            :returns Nothing
+
+        """
+
+        #Remove the old sizers and reinitialise the common widgets
         self.Base_update_tab_config()
 
+        #Adding the left controls to the Overall sizer
         self.main_sizer.Add(self.control_sizer, 1, wx.EXPAND)
 
+        #Complete the Overall sizer for the 'Disabled' plot type
         self.Initial_Disabled_tab_config()
 
+        # Binding the plot type combobox with a function that update the tab depending on the plot type selected
         self.plot_type_combo.Bind(wx.EVT_COMBOBOX_CLOSEUP, self.Update_tab_plot_type_config)
 
+        # Adjusting the whole window to the new tab config
         self.Layout()
         self.GetParent().GetParent().sizer.Layout()
 
-    def Update_XY_plot_type_config(self):
+    def Initial_Disabled_tab_config(self):
+        """
+            Complete the 'Disabled' plot type tab configuration
 
-        self.parameters = {}
+            :returns Nothing
+
+        """
+
+        self.display = None # to make sure that when the plot title is changed, there is not error.
+
+        self.static_line_main = wx.StaticLine(self, style=wx.LI_VERTICAL)
+        self.main_sizer.Add(self.static_line_main, 0, wx.EXPAND)
+
+        self.display_Text = wx.StaticText(self, label=self.title_text.GetValue())
+        self.display_control_buttons_sizer.Add(self.display_Text, 1, wx.EXPAND)
+        self.display_Text.Hide()
+        self.main_sizer.Add(self.display_control_buttons_sizer, 2, wx.EXPAND)
+
+    def Update_XY_plot_type_config(self):
+        """
+            If the plot type is changed to 'XY' this function reset the tab to the XY layout.
+
+            :returns Nothing
+
+        """
+
+        self.parameters = {} # Dictionnary used for registering the Display parameters
+
+        #Remove the old sizers and reinitialise the common widgets
         self.Base_update_tab_config()
 
+        # Initialising and adding the x value combobox to the left controls sizer
         x_value_sizer = wx.BoxSizer(wx.HORIZONTAL)
         x_value_static = wx.StaticText(self, label='X axis value : ')
         self.x_value_combo = wx.ComboBox(self, value='V', choices=['V', 'I', 'P', 'Q', 'S', 'F'])
@@ -4372,6 +4522,7 @@ class RtppOtherTab(wx.Panel):
         x_value_sizer.Add(self.x_value_combo, 0, wx.ALIGN_LEFT)
         self.control_sizer.Add(x_value_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the y value combobox to the left controls sizer
         y_value_sizer = wx.BoxSizer(wx.HORIZONTAL)
         y_value_static = wx.StaticText(self, label='Y axis value : ')
         self.y_value_combo = wx.ComboBox(self, value='Q', choices=['V', 'I', 'P', 'Q', 'S', 'F'])
@@ -4379,6 +4530,7 @@ class RtppOtherTab(wx.Panel):
         y_value_sizer.Add(self.y_value_combo, 0, wx.ALIGN_LEFT)
         self.control_sizer.Add(y_value_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the display mode combobox to the left controls sizer
         display_mode_sizer = wx.BoxSizer(wx.HORIZONTAL)
         display_mode_static = wx.StaticText(self, label='Display mode : ')
         self.display_mode_combo = wx.ComboBox(self, value='Refresh', choices=['Refresh', 'Superposition'])
@@ -4386,12 +4538,16 @@ class RtppOtherTab(wx.Panel):
         display_mode_sizer.Add(self.display_mode_combo, 0, wx.ALIGN_LEFT)
         self.control_sizer.Add(display_mode_sizer, 0, wx.ALL, 5)
 
+        #Adding the left controls to the Overall sizer
         self.main_sizer.Add(self.control_sizer, 1, wx.EXPAND)
 
+        #Adding the vertical line seperating the left controls and the display to the Overall sizer
         self.static_line_main = wx.StaticLine(self, style=wx.LI_VERTICAL)
         self.main_sizer.Add(self.static_line_main, 0, wx.EXPAND)
 
+        # Initialising and Adding the Display to the right display and controls tab sizer
         self.display_sizer = wx.BoxSizer(wx.HORIZONTAL)
+            # Initialising the modified Matplotlib Canvas Object of the RealTimePlotting.py script (Figure not yet intialised)
         self.display = RTP.Preference_canvas(self, size=self.GetParent().GetParent().GetSize(),
                                              title=self.title_text.GetValue())
         self.display_sizer.Add(self.display, 1, wx.EXPAND | wx.ALL, 5)
@@ -4399,45 +4555,70 @@ class RtppOtherTab(wx.Panel):
         self.GetParent().Bind(wx.EVT_MAXIMIZE, self.GraphResize)
         self.display_control_buttons_sizer.Add(self.display_sizer, 2, wx.EXPAND)
 
+        # Adding an Horizontal line to the right display and controls tab sizer that separate the display from the controls
         static_line_dcb_1 = wx.StaticLine(self, style=wx.LI_HORIZONTAL)
         self.display_control_buttons_sizer.Add(static_line_dcb_1, 0, wx.EXPAND)
 
+        #Initialising the right controls sizer
         controls_under_display_sizer = wx.BoxSizer(wx.HORIZONTAL)
 
+        # Initialising and adding the first control sizer for general XY set up to the right controls sizer
         general_control_sizer = wx.BoxSizer(wx.VERTICAL)
         self.XY_General_setup(general_control_sizer)
         controls_under_display_sizer.Add(general_control_sizer, 1, wx.EXPAND | wx.ALIGN_LEFT)
 
+        #Adding a vertical line to the right controls that separate the first and second control sizers
         static_line_cud_1 = wx.StaticLine(self, style=wx.LI_VERTICAL)
         controls_under_display_sizer.Add(static_line_cud_1, 0, wx.EXPAND)
 
+        # Initialising and adding the second control sizer for specific X axis set up to the right controls sizer
         x_control_sizer = wx.BoxSizer(wx.VERTICAL)
         self.XY_X_setup(x_control_sizer)
         controls_under_display_sizer.Add(x_control_sizer, 1, wx.EXPAND | wx.ALIGN_CENTER_HORIZONTAL)
 
+        # Adding a vertical line to the right controls that separate the second and third control sizers
         static_line_cud_2 = wx.StaticLine(self, style=wx.LI_VERTICAL)
         controls_under_display_sizer.Add(static_line_cud_2, 0, wx.EXPAND)
 
+        # Initialising and adding the third control sizer for specific Y axis set up to the right controls sizer
         y_control_sizer = wx.BoxSizer(wx.VERTICAL)
         self.XY_Y_setup(y_control_sizer)
         controls_under_display_sizer.Add(y_control_sizer, 1, wx.EXPAND | wx.ALIGN_RIGHT)
 
+        # Adding the right controls to the right display and controls sizer
         self.display_control_buttons_sizer.Add(controls_under_display_sizer, 1, wx.EXPAND)
 
+        # Adding the right display and control sizers to the Overall sizer
         self.main_sizer.Add(self.display_control_buttons_sizer, 2, wx.EXPAND)
 
+        # Binding the plot type combobox with a function that update the tab depending on the plot type selected
         self.plot_type_combo.Bind(wx.EVT_COMBOBOX_CLOSEUP, self.Update_tab_plot_type_config)
 
+        # Initialisation of the XY figure with all the parameters and showed through the self.display canvas
         self.display.Create_Figure(type=self.plot_type, parameters=self.parameters)
 
+        # Adjusting the window to the new tab config
         self.Layout()
         self.GetParent().GetParent().sizer.Layout()
 
+        # Adjusting the Display canvas size to the tab sizes
         self.GraphResize(evt=None)
 
     def XY_General_setup(self, general_control_sizer):
+        """
+            Initialise the first control sizer of the right controls, which represent the general setting of the XY
+            figure
+            :param general_control_sizer : wx.BoxSizer(wx.Vertical) - sizer used for the general setting of the XY
+            figure
+
+            :returns Nothing
+
+        """
+
+        #Adding the title static text widget to the first right controls sizer
         general_control_sizer.Add(wx.StaticText(self, label='General Plot Setting :'))
 
+        # Initialising and adding the Grid checkbox to the first right controls sizer
         grid_sizer = wx.BoxSizer(wx.HORIZONTAL)
         grid_static = wx.StaticText(self, label='With Grid : ')
         self.grid_checkbox = wx.CheckBox(self)
@@ -4448,6 +4629,7 @@ class RtppOtherTab(wx.Panel):
         grid_sizer.Add(self.grid_checkbox, 0, wx.ALIGN_LEFT)
         general_control_sizer.Add(grid_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the marker type combobox to the first right controls sizer
         marker_sizer = wx.BoxSizer(wx.HORIZONTAL)
         marker_static = wx.StaticText(self, label='marker type : ')
         self.marker_combo = wx.ComboBox(self, value='Circle',
@@ -4458,6 +4640,7 @@ class RtppOtherTab(wx.Panel):
         marker_sizer.Add(self.marker_combo, 0, wx.ALIGN_LEFT)
         general_control_sizer.Add(marker_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the maker color combobox to the first right controls sizer
         marker_color_sizer = wx.BoxSizer(wx.HORIZONTAL)
         marker_color_static = wx.StaticText(self, label='marker Color : ')
         self.marker_color_combo = wx.ComboBox(self, value='Black', choices=['Black', 'Red', 'Blue', 'Green', 'Yellow', 'Cyan', 'Magenta', 'white'])
@@ -4467,6 +4650,7 @@ class RtppOtherTab(wx.Panel):
         marker_color_sizer.Add(self.marker_color_combo, 0, wx.ALIGN_LEFT)
         general_control_sizer.Add(marker_color_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the Overlay checkbox to the first right controls sizer
         overlay_sizer = wx.BoxSizer(wx.HORIZONTAL)
         overlay_static = wx.StaticText(self, label='With Overlay : ')
         self.overlay_checkbox = wx.CheckBox(self)
@@ -4477,6 +4661,7 @@ class RtppOtherTab(wx.Panel):
         overlay_sizer.Add(self.overlay_checkbox, 0, wx.ALIGN_LEFT)
         general_control_sizer.Add(overlay_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the Overlay color combobox to the first right controls sizer
         overlay_color_sizer = wx.BoxSizer(wx.HORIZONTAL)
         overlay_color_static = wx.StaticText(self, label='Overlay Color : ')
         self.overlay_color_combo = wx.ComboBox(self, value='Red',
@@ -4488,18 +4673,40 @@ class RtppOtherTab(wx.Panel):
         general_control_sizer.Add(overlay_color_sizer, 0, wx.ALL, 5)
 
     def XY_marker_update(self, evt):
+        """
+            When the marker type is changed, this function change the marker type of the Display figure and readjust the
+            Canvas to the window with the new change
+
+            :returns Nothing
+
+        """
         self.display.axes_plot[0].set_marker(RTP.MARKER[self.marker_combo.GetValue()])
         self.parameters['marker type'] = self.marker_combo.GetValue()
         self.display.parameters['marker type'] = self.marker_combo.GetValue()
         self.GraphResize(evt=None)
 
     def XY_marker_color_update(self, evt):
+        """
+            When the marker color is changed, this function change the marker color of the Display figure and readjust
+             the Canvas to the window with the new change
+
+            :returns Nothing
+
+        """
         self.display.axes_plot[0].set_color(self.marker_color_combo.GetValue())
         self.parameters['marker Color'] = self.marker_color_combo.GetValue()
         self.display.parameters['marker Color'] = self.marker_color_combo.GetValue()
         self.GraphResize(evt=None)
 
     def XY_Overlay_update(self, evt):
+        """
+            When the 'With Overlay' checkbox state is changed, this function changes the Display figure by adding or
+            removing the Overlay lines depending on the checkbox state and readjust the Canvas to the window with the
+             new change
+
+            :returns Nothing
+
+        """
         if self.overlay_checkbox.GetValue():
             self.display.XY_add_overlay()
             self.overlay_color_combo.Enable()
@@ -4512,6 +4719,13 @@ class RtppOtherTab(wx.Panel):
         self.GraphResize(evt=None)
 
     def XY_Overlay_line_color_update(self, evt):
+        """
+            When the Overlay lines color is changed, this function change the overlay lines color of the Display figure
+             and readjust the Canvas to the window with the new change
+
+            :returns Nothing
+
+        """
         self.display.overlay_max.set_color(self.overlay_color_combo.GetValue())
         self.display.overlay_min.set_color(self.overlay_color_combo.GetValue())
         self.parameters['Overlay Color'] = self.overlay_color_combo.GetValue()
@@ -4519,9 +4733,19 @@ class RtppOtherTab(wx.Panel):
         self.GraphResize(evt=None)
 
     def XY_X_setup(self, x_control_sizer):
+        """
+            Initialise the second control sizer of the right controls, which represent the specific X setting of the XY
+            figure
+            :param x_control_sizer : wx.BoxSizer(wx.Vertical) - sizer used for the specific X setting of the XY
+            figure
 
+            :returns Nothing
+
+        """
+        # Adding the title static text widget to the second right controls sizer
         x_control_sizer.Add(wx.StaticText(self, label='X value Plot setting :'))
 
+        # Initialising and adding the X axis title text widget to the second right controls sizer
         x_axis_title_sizer = wx.BoxSizer(wx.HORIZONTAL)
         x_axis_title_static = wx.StaticText(self, label='x axis title : ')
         self.x_axis_title_text = wx.TextCtrl(self, value='X axis', style=wx.TE_PROCESS_ENTER)
@@ -4533,8 +4757,18 @@ class RtppOtherTab(wx.Panel):
 
 
     def XY_Y_setup(self, y_control_sizer):
+        """
+            Initialise the second control sizer of the right controls, which represent the specific Y setting of the XY
+            figure
+            :param y_control_sizer : wx.BoxSizer(wx.Vertical) - sizer used for the specific Y setting of the XY
+            figure
+
+            :returns Nothing
+        """
+        # Adding the title static text widget to the third right controls sizer
         y_control_sizer.Add(wx.StaticText(self, label='Y value Plot setting :'))
 
+        # Initialising and adding the Y axis title text widget to the third right controls sizer
         y_axis_title_sizer = wx.BoxSizer(wx.HORIZONTAL)
         y_axis_title_static = wx.StaticText(self, label='y axis title : ')
         self.y_axis_title_text = wx.TextCtrl(self, value='y axis', style=wx.TE_PROCESS_ENTER)
@@ -4545,16 +4779,31 @@ class RtppOtherTab(wx.Panel):
         y_control_sizer.Add(y_axis_title_sizer, 0, wx.ALL, 5)
 
     def XY_Y_axis_update(self, evt):
+        """
+            When the y axis title is changed, this function change the y axis title of the Display figure and readjust
+             the Canvas to the window with the new change
+
+            :returns Nothing
+
+        """
         self.display.axes.set_ylabel(self.y_axis_title_text.GetValue())
         self.parameters['y axis title'] = self.y_axis_title_text.GetValue()
         self.display.parameters['y axis title'] = self.y_axis_title_text.GetValue()
         self.GraphResize(evt=None)
 
     def Update_Time_based_plot_type_config(self):
+        """
+            If the plot type is changed to 'Time-based' this function reset the tab to the Time-based layout.
 
-        self.parameters = {}
+            :returns Nothing
+
+        """
+        self.parameters = {} # Dictionnary used for registering the Display parameters
+
+        # Remove the old sizers and reinitialise the common widgets
         self.Base_update_tab_config()
 
+        # Initialising and adding the x value static text widget to the left controls sizer
         x_value_sizer = wx.BoxSizer(wx.HORIZONTAL)
         x_value_static = wx.StaticText(self, label='x axis value : ')
         self.x_value_static_Text = wx.StaticText(self, label='Time')
@@ -4562,6 +4811,7 @@ class RtppOtherTab(wx.Panel):
         x_value_sizer.Add(self.x_value_static_Text, 0, wx.ALIGN_LEFT)
         self.control_sizer.Add(x_value_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the y1 axis value combobox to the left controls sizer
         y1_value_sizer = wx.BoxSizer(wx.HORIZONTAL)
         y1_value_static = wx.StaticText(self, label='y1 axis value : ')
         self.y1_value_combo = wx.ComboBox(self, value='V', choices=['V', 'I', 'P', 'Q', 'S'])
@@ -4569,6 +4819,7 @@ class RtppOtherTab(wx.Panel):
         y1_value_sizer.Add(self.y1_value_combo, 0, wx.ALIGN_LEFT)
         self.control_sizer.Add(y1_value_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the y2 axis value combobox to the left controls sizer
         y2_value_sizer = wx.BoxSizer(wx.HORIZONTAL)
         y2_value_static = wx.StaticText(self, label='y2 axis value : ')
         self.y2_value_combo = wx.ComboBox(self, value='Disabled', choices=['V', 'I', 'P', 'Q', 'S', 'Disabled'])
@@ -4578,12 +4829,16 @@ class RtppOtherTab(wx.Panel):
         y2_value_sizer.Add(self.y2_value_combo, 0, wx.ALIGN_LEFT)
         self.control_sizer.Add(y2_value_sizer, 0, wx.ALL, 5)
 
+        # Adding the left controls to the Overall sizer
         self.main_sizer.Add(self.control_sizer, 1, wx.EXPAND)
 
+        # Adding the vertical line seperating the left controls and the display to the Overall sizer
         self.static_line_main = wx.StaticLine(self, style=wx.LI_VERTICAL)
         self.main_sizer.Add(self.static_line_main, 0, wx.EXPAND)
 
+        # Initialising and Adding the Display to the right display and controls tab sizer
         self.display_sizer = wx.BoxSizer(wx.HORIZONTAL)
+            # Initialising the modified Matplotlib Canvas Object of the RealTimePlotting.py script (Figure not yet intialised)
         self.display = RTP.Preference_canvas(self, size=self.GetParent().GetParent().GetSize(),
                                              title=self.title_text.GetValue())
         self.display_sizer.Add(self.display, 1, wx.EXPAND | wx.ALL, 5)
@@ -4591,47 +4846,70 @@ class RtppOtherTab(wx.Panel):
         self.GetParent().Bind(wx.EVT_MAXIMIZE, self.GraphResize)
         self.display_control_buttons_sizer.Add(self.display_sizer, 2, wx.EXPAND)
 
+        # Adding an Horizontal line to the right display and controls tab sizer that separate the display from the controls
         static_line_dcb_1 = wx.StaticLine(self, style=wx.LI_HORIZONTAL)
         self.display_control_buttons_sizer.Add(static_line_dcb_1, 0, wx.EXPAND)
 
+        # Initialising the right controls sizer
         controls_under_display_sizer = wx.BoxSizer(wx.HORIZONTAL)
 
+        # Initialising and adding the first control sizer for general and X axis set up to the right controls sizer
         gen_x_control_sizer = wx.BoxSizer(wx.VERTICAL)
         self.Time_based_General_and_x_control_SetUp(gen_x_control_sizer)
         controls_under_display_sizer.Add(gen_x_control_sizer, 1, wx.EXPAND | wx.ALIGN_LEFT)
 
+        # Adding a vertical line to the right controls that separate the first and second control sizers
         static_line_cud_1 = wx.StaticLine(self, style= wx.LI_VERTICAL)
         controls_under_display_sizer.Add(static_line_cud_1, 0, wx.EXPAND)
 
+        # Initialising and adding the second control sizer for specific Y1 axis set up to the right controls sizer
         y1_control_sizer = wx.BoxSizer(wx.VERTICAL)
         self.Time_based_Y1_control_SetUp(y1_control_sizer)
         controls_under_display_sizer.Add(y1_control_sizer, 1, wx.EXPAND | wx.ALIGN_CENTER_HORIZONTAL)
 
+        # Adding a vertical line to the right controls that separate the second and third control sizers
         static_line_cud_2 = wx.StaticLine(self, style=wx.LI_VERTICAL)
         controls_under_display_sizer.Add(static_line_cud_2, 0, wx.EXPAND)
 
+        # Initialising and adding the third control sizer for specific Y2 axis set up to the right controls sizer
         y2_control_sizer = wx.BoxSizer(wx.VERTICAL)
         self.Time_based_Y2_control_SetUp(y2_control_sizer)
         controls_under_display_sizer.Add(y2_control_sizer, 1, wx.EXPAND | wx.ALIGN_RIGHT)
 
+        # Adding the right controls to the right display and controls sizer
         self.display_control_buttons_sizer.Add(controls_under_display_sizer, 1, wx.EXPAND)
 
+        # Adding the right display and control sizers to the Overall sizer
         self.main_sizer.Add(self.display_control_buttons_sizer, 2, wx.EXPAND)
 
+        # Binding the plot type combobox with a function that update the tab depending on the plot type selected
         self.plot_type_combo.Bind(wx.EVT_COMBOBOX_CLOSEUP, self.Update_tab_plot_type_config)
 
+        # Initialisation of the Time-based figure with all the parameters and showed through the self.display canvas
         self.display.Create_Figure(type=self.plot_type, parameters=self.parameters)
 
+        # Adjusting the window to the new tab config
         self.Layout()
         self.GetParent().GetParent().sizer.Layout()
 
+        # Adjusting the Display canvas size to the tab sizes
         self.GraphResize(evt=None)
 
 
     def Time_based_General_and_x_control_SetUp(self, gen_x_control_sizer=None):
+        """
+            Initialise the first control sizer of the right controls, which represent the general setting and specific X
+             setting of the time-based figure
+            :param general_x_control_sizer : wx.BoxSizer(wx.Vertical) - sizer used for the general and X setting of the
+             time-based figure
 
+            :returns Nothing
+
+        """
+        # Adding the title static text widget to the first right controls sizer
         gen_x_control_sizer.Add(wx.StaticText(self, label='General and x value Plot Setting :'))
 
+        # Initialising and adding the X axis title text widget to the first right controls sizer
         x_axis_title_sizer = wx.BoxSizer(wx.HORIZONTAL)
         x_axis_title_static = wx.StaticText(self, label='x axis title : ')
         self.x_axis_title_text = wx.TextCtrl(self, value='X axis', style=wx.TE_PROCESS_ENTER)
@@ -4641,6 +4919,7 @@ class RtppOtherTab(wx.Panel):
         x_axis_title_sizer.Add(self.x_axis_title_text, 0, wx.ALIGN_LEFT)
         gen_x_control_sizer.Add(x_axis_title_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the Grid chekcbox to the first right controls sizer
         grid_sizer = wx.BoxSizer(wx.HORIZONTAL)
         grid_static = wx.StaticText(self, label='With Grid : ')
         self.grid_checkbox = wx.CheckBox(self)
@@ -4651,6 +4930,7 @@ class RtppOtherTab(wx.Panel):
         grid_sizer.Add(self.grid_checkbox, 0, wx.ALIGN_LEFT)
         gen_x_control_sizer.Add(grid_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the Legend checkbox to the first right controls sizer
         legend_sizer = wx.BoxSizer(wx.HORIZONTAL)
         legend_static = wx.StaticText(self, label='With Legend : ')
         self.legend_checkbox = wx.CheckBox(self)
@@ -4661,6 +4941,7 @@ class RtppOtherTab(wx.Panel):
         legend_sizer.Add(self.legend_checkbox, 0, wx.ALIGN_LEFT)
         gen_x_control_sizer.Add(legend_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the X min widgets to the first right controls sizer
         x_min_sizer = wx.BoxSizer(wx.HORIZONTAL)
         x_min_static = wx.StaticText(self, label='x minimum : ')
         self.x_min_combo = wx.ComboBox(self, value='Auto', choices=['Auto', 'Manual'])
@@ -4670,6 +4951,7 @@ class RtppOtherTab(wx.Panel):
         x_min_sizer.Add(self.x_min_text, 0, wx.ALIGN_LEFT) # need to disable it when auto is selected
         gen_x_control_sizer.Add(x_min_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the X max widgets to the first right controls sizer
         x_max_sizer = wx.BoxSizer(wx.HORIZONTAL)
         x_max_static = wx.StaticText(self, label='x maximum : ')
         self.x_max_combo = wx.ComboBox(self, value='Auto', choices=['Auto', 'Manual'])
@@ -4680,13 +4962,31 @@ class RtppOtherTab(wx.Panel):
         gen_x_control_sizer.Add(x_max_sizer, 0, wx.ALL, 5)
 
     def Time_based_Legend_refresh(self):
-        self.display.axes.get_legend().remove()
-        self.display.axes.legend(loc=3)
-        if self.y2_value_combo.GetValue() != 'Disabled':
-            self.display.second_axes.get_legend().remove()
-            self.display.second_axes.legend(loc=1)
+        """
+            When a Display line is disabled, this function changes the Display figure by adding or
+            removing the Disabled line from the legend.
+
+            :returns Nothing
+
+        """
+        if self.display.axes.get_legend() is not None:
+            self.display.axes.get_legend().remove()
+            self.display.axes.legend(loc=3)
+            if self.y2_value_combo.GetValue() != 'Disabled':
+                self.display.second_axes.get_legend().remove()
+                self.display.second_axes.legend(loc=1)
+        else:
+            pass
 
     def Time_based_Legend_update(self, evt):
+        """
+            When the 'Legend' checkbox state is changed, this function changes the Display figure by adding or
+            removing the Legend depending on the checkbox state and current line enabled. Then, it
+             readjust the Canvas to the window with the new change
+
+            :returns Nothing
+
+        """
         if self.legend_checkbox.GetValue():
             self.display.axes.legend(loc=3)
             if self.y2_value_combo.GetValue() != 'Disabled':
@@ -4700,9 +5000,19 @@ class RtppOtherTab(wx.Panel):
         self.GraphResize(evt=None)
 
     def Time_based_Y1_control_SetUp(self, y1_control_sizer=None):
+        """
+            Initialise the second control sizer of the right controls, which represent the specific Y1 setting of the
+            Time-based figure
+            :param y1_control_sizer : wx.BoxSizer(wx.Vertical) - sizer used for the specific Y1 setting of the
+            time-based figure
 
+            :returns Nothing
+
+        """
+        # Adding the title static text widget to the second right controls sizer
         y1_control_sizer.Add(wx.StaticText(self, label='y1 value Plot Setting :'))
 
+        # Initialising and adding the Y1 axis title text widget to the second right controls sizer
         y1_axis_title_sizer = wx.BoxSizer(wx.HORIZONTAL)
         y1_axis_title_static = wx.StaticText(self, label='y1 axis title : ')
         self.y1_axis_title_text = wx.TextCtrl(self, value='y1 axis', style=wx.TE_PROCESS_ENTER)
@@ -4712,6 +5022,7 @@ class RtppOtherTab(wx.Panel):
         y1_axis_title_sizer.Add(self.y1_axis_title_text, 0, wx.ALIGN_LEFT)
         y1_control_sizer.Add(y1_axis_title_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the Y1 line color combobox to the second right controls sizer
         y1_color_sizer = wx.BoxSizer(wx.HORIZONTAL)
         y1_color_static = wx.StaticText(self, label='y1 line Color : ')
         self.y1_color_combo = wx.ComboBox(self, value='Black', choices=['Black', 'Red', 'Blue', 'Green', 'Yellow', 'Cyan', 'Magenta', 'white'])
@@ -4721,6 +5032,7 @@ class RtppOtherTab(wx.Panel):
         y1_color_sizer.Add(self.y1_color_combo, 0, wx.ALIGN_LEFT)
         y1_control_sizer.Add(y1_color_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the Y1 Overlay checkbox to the second right controls sizer
         y1_overlay_sizer = wx.BoxSizer(wx.HORIZONTAL)
         y1_overlay_static = wx.StaticText(self, label='With Overlay : ')
         self.y1_overlay_checkbox = wx.CheckBox(self)
@@ -4731,6 +5043,7 @@ class RtppOtherTab(wx.Panel):
         y1_overlay_sizer.Add(self.y1_overlay_checkbox, 0, wx.ALIGN_LEFT)
         y1_control_sizer.Add(y1_overlay_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the Y1 overlay color combobox to the second right controls sizer
         y1_overlay_color_sizer = wx.BoxSizer(wx.HORIZONTAL)
         y1_overlay_color_static = wx.StaticText(self, label='y1 Overlay Color : ')
         self.y1_overlay_color_combo = wx.ComboBox(self, value='Red', choices=['Black', 'Red', 'Blue', 'Green', 'Yellow', 'Cyan', 'Magenta', 'white'])
@@ -4740,6 +5053,7 @@ class RtppOtherTab(wx.Panel):
         y1_overlay_color_sizer.Add(self.y1_overlay_color_combo, 0, wx.ALIGN_LEFT)
         y1_control_sizer.Add(y1_overlay_color_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the Y1 min widgets to the second right controls sizer
         y1_min_sizer = wx.BoxSizer(wx.HORIZONTAL)
         y1_min_static = wx.StaticText(self, label='y1 minimum : ')
         self.y1_min_combo = wx.ComboBox(self, value='Auto', choices=['Auto', 'Manual'])
@@ -4749,6 +5063,7 @@ class RtppOtherTab(wx.Panel):
         y1_min_sizer.Add(self.y1_min_text, 0, wx.ALIGN_LEFT) # need to disable it when auto is selected
         y1_control_sizer.Add(y1_min_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the Y1 max widgets to the second right controls sizer
         y1_max_sizer = wx.BoxSizer(wx.HORIZONTAL)
         y1_max_static = wx.StaticText(self, label='y1 maximum : ')
         self.y1_max_combo = wx.ComboBox(self, value='Auto', choices=['Auto', 'Manual'])
@@ -4759,12 +5074,26 @@ class RtppOtherTab(wx.Panel):
         y1_control_sizer.Add(y1_max_sizer, 0, wx.ALL, 5)
 
     def Time_based_Y1_axis_update(self, evt):
+        """
+            When the y1 axis title is changed, this function change the y1 axis title of the Display figure and readjust
+             the Canvas to the window with the new change
+
+            :returns Nothing
+
+        """
         self.display.axes.set_ylabel(self.y1_axis_title_text.GetValue())
         self.parameters['y1 axis title'] = self.y1_axis_title_text.GetValue()
         self.display.parameters['y1 axis title'] = self.y1_axis_title_text.GetValue()
         self.GraphResize(evt=None)
 
     def Time_based_Y1_line_color_update(self, evt):
+        """
+            When the y1 line color is changed, this function change the y1 line color of the Display figure and readjust
+             the Canvas to the window with the new change
+
+            :returns Nothing
+
+        """
         self.display.axes_plot[0].set_color(self.y1_color_combo.GetValue())
         self.parameters['y1 line color'] = self.y1_color_combo.GetValue()
         self.display.parameters['y1 line color'] = self.y1_color_combo.GetValue()
@@ -4772,6 +5101,14 @@ class RtppOtherTab(wx.Panel):
         self.GraphResize(evt=None)
 
     def Time_based_Y1_Overlay_update(self, evt):
+        """
+            When the Y1 'With Overlay' checkbox state is changed, this function changes the Display figure by adding or
+            removing the Y1 Overlay depending on the checkbox state. Then, it readjust the Canvas to the window with
+            the new change
+
+            :returns Nothing
+
+        """
         if self.y1_overlay_checkbox.GetValue():
             self.display.Time_based_add_y1_overlay()
             self.y1_overlay_color_combo.Enable()
@@ -4785,6 +5122,13 @@ class RtppOtherTab(wx.Panel):
         self.GraphResize(evt=None)
 
     def Time_based_Y1_Overlay_line_color_update(self, evt):
+        """
+            When the y1 Overlay line color is changed, this function change the y1 overlay line color of the Display
+             figure and readjust the Canvas to the window with the new change
+
+            :returns Nothing
+
+        """
         self.display.y1_overlay_max.set_color(self.y1_overlay_color_combo.GetValue())
         self.display.y1_overlay_min.set_color(self.y1_overlay_color_combo.GetValue())
         self.parameters['y1 Overlay Color'] = self.y1_overlay_color_combo.GetValue()
@@ -4793,8 +5137,23 @@ class RtppOtherTab(wx.Panel):
         self.GraphResize(evt=None)
 
     def Time_based_Y2_control_SetUp(self, y2_control_sizer=None):
+        """
+            Initialise the third control sizer of the right controls, which represent the specific Y2 setting of the
+             Time-based figure
+
+            However all the y2 controls widgets are disabled initially. To Enable, select a y2 value other than Disabled
+             from the y2 value combobox.
+
+            :param y2_control_sizer : wx.BoxSizer(wx.Vertical) - sizer used for the specific Y2 setting of the
+            Time-based figure
+
+            :returns Nothing
+
+        """
+        # Adding the title static text widget to the third right controls sizer
         y2_control_sizer.Add(wx.StaticText(self, label=' Setting :'))
 
+        # Initialising and adding the Y2 axis title text widget to the third right controls sizer
         y2_axis_title_sizer = wx.BoxSizer(wx.HORIZONTAL)
         y2_axis_title_static = wx.StaticText(self, label='y2 axis title : ')
         self.y2_axis_title_text = wx.TextCtrl(self, value='y2 axis', style=wx.TE_PROCESS_ENTER)
@@ -4805,6 +5164,7 @@ class RtppOtherTab(wx.Panel):
         y2_axis_title_sizer.Add(self.y2_axis_title_text, 0, wx.ALIGN_LEFT)
         y2_control_sizer.Add(y2_axis_title_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the Y2 line color combobox to the third right controls sizer
         y2_color_sizer = wx.BoxSizer(wx.HORIZONTAL)
         y2_color_static = wx.StaticText(self, label='y2 line Color : ')
         self.y2_color_combo = wx.ComboBox(self, value='Green', choices=['Black', 'Red', 'Blue', 'Green', 'Yellow', 'Cyan', 'Magenta', 'white'])
@@ -4815,6 +5175,7 @@ class RtppOtherTab(wx.Panel):
         y2_color_sizer.Add(self.y2_color_combo, 0, wx.ALIGN_LEFT)
         y2_control_sizer.Add(y2_color_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the Y2 Overlay checkbox to the third right controls sizer
         y2_overlay_sizer = wx.BoxSizer(wx.HORIZONTAL)
         y2_overlay_static = wx.StaticText(self, label='With overlay : ')
         self.y2_overlay_checkbox = wx.CheckBox(self)
@@ -4826,6 +5187,7 @@ class RtppOtherTab(wx.Panel):
         y2_overlay_sizer.Add(self.y2_overlay_checkbox, 0, wx.ALIGN_LEFT)
         y2_control_sizer.Add(y2_overlay_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the Y2 Overlay line color combobox to the third right controls sizer
         y2_overlay_color_sizer = wx.BoxSizer(wx.HORIZONTAL)
         y2_overlay_color_static = wx.StaticText(self, label='y2 Overlay Color : ')
         self.y2_overlay_color_combo = wx.ComboBox(self, value='Blue', choices=['Black', 'Red', 'Blue', 'Green', 'Yellow', 'Cyan', 'Magenta', 'white'])
@@ -4836,6 +5198,7 @@ class RtppOtherTab(wx.Panel):
         y2_overlay_color_sizer.Add(self.y2_overlay_color_combo, 0, wx.ALIGN_LEFT)
         y2_control_sizer.Add(y2_overlay_color_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the Y2 min widgets to the third right controls sizer
         y2_min_sizer = wx.BoxSizer(wx.HORIZONTAL)
         y2_min_static = wx.StaticText(self, label='y2 minimum : ')
         self.y2_min_combo = wx.ComboBox(self, value='Auto', choices=['Auto', 'Manual'])
@@ -4847,6 +5210,7 @@ class RtppOtherTab(wx.Panel):
         y2_min_sizer.Add(self.y2_min_text, 0, wx.ALIGN_LEFT)  # need to disable it when auto is selected
         y2_control_sizer.Add(y2_min_sizer, 0, wx.ALL, 5)
 
+        # Initialising and adding the Y2 max widgets to the third right controls sizer
         y2_max_sizer = wx.BoxSizer(wx.HORIZONTAL)
         y2_max_static = wx.StaticText(self, label='y2 maximum : ')
         self.y2_max_combo = wx.ComboBox(self, value='Auto', choices=['Auto', 'Manual'])
@@ -4859,12 +5223,26 @@ class RtppOtherTab(wx.Panel):
         y2_control_sizer.Add(y2_max_sizer, 0, wx.ALL, 5)
 
     def Time_based_Y2_axis_update(self, evt):
+        """
+            When the y2 axis title is changed, this function change the y2 axis title of the Display figure and readjust
+             the Canvas to the window with the new change
+
+            :returns Nothing
+
+        """
         self.display.second_axes.set_ylabel(self.y2_axis_title_text.GetValue())
         self.parameters['y2 axis title'] = self.y2_axis_title_text.GetValue()
         self.display.parameters['y2 axis title'] = self.y2_axis_title_text.GetValue()
         self.GraphResize(evt=None)
 
     def Time_based_Y2_line_color_update(self, evt):
+        """
+            When the y2 line color is changed, this function change the y2 line color of the Display figure and readjust
+             the Canvas to the window with the new change
+
+            :returns Nothing
+
+        """
         self.display.second_axes_plot[0].set_color(self.y2_color_combo.GetValue())
         self.parameters['y2 line color'] = self.y2_color_combo.GetValue()
         self.display.parameters['y2 line color'] = self.y2_color_combo.GetValue()
@@ -4872,6 +5250,14 @@ class RtppOtherTab(wx.Panel):
         self.GraphResize(evt=None)
 
     def Time_based_Y2_Overlay_update(self, evt):
+        """
+            When the Y2 'With Overlay' checkbox state is changed, this function changes the Display figure by adding or
+            removing the Y2 Overlay depending on the checkbox state. Then, it readjust the Canvas to the window with
+            the new change
+
+            :returns Nothing
+
+        """
         if self.y2_overlay_checkbox.GetValue():
             self.display.Time_based_add_y2_overlay()
             self.y2_overlay_color_combo.Enable()
@@ -4885,6 +5271,13 @@ class RtppOtherTab(wx.Panel):
         self.GraphResize(evt=None)
 
     def Time_based_Y2_Overlay_line_color_update(self, evt):
+        """
+            When the y2 Overlay line color is changed, this function change the y2 overlay line color of the Display
+             figure and readjust the Canvas to the window with the new change
+
+            :returns Nothing
+
+        """
         self.display.y2_overlay_max.set_color(self.y2_overlay_color_combo.GetValue())
         self.display.y2_overlay_min.set_color(self.y2_overlay_color_combo.GetValue())
         self.parameters['y2 Overlay Color'] = self.y2_overlay_color_combo.GetValue()
@@ -4893,6 +5286,13 @@ class RtppOtherTab(wx.Panel):
         self.GraphResize(evt=None)
 
     def Time_based_Access_y2_control(self, evt):
+        """
+            When the y2 value from left controls is changed, this function enables or disable the y2 specific settings
+             of the right controls. It also adjusts the figure to add or remove the y2 line and parameters.
+
+            :returns Nothing
+
+        """
         if self.y2_value_combo.GetValue() == 'Disabled':
             self.y2_axis_title_text.Disable()
             self.y2_color_combo.Disable()
@@ -4918,6 +5318,12 @@ class RtppOtherTab(wx.Panel):
                 self.display.Time_based_add_second_axes()
 
     def GraphResize(self, evt):
+        """
+            Commmon function that resize and redraw the display canvas to the window and graph parameters changes
+
+            :returns Nothing
+
+        """
         height = self.display_sizer.GetSize()[1] / self.display.pref_figure.get_dpi()
         width = self.display_sizer.GetSize()[0] / self.display.pref_figure.get_dpi()
         self.display.pref_figure.set_size_inches(width, height)
@@ -4927,19 +5333,40 @@ class RtppOtherTab(wx.Panel):
         self.GetParent().Layout()
 
     def X_axis_update(self, evt):
+        """
+            Common fuction : When the x axis title is changed, this function change the x axis title of the Display
+             figure and readjust the Canvas to the window with the new change
+
+            :returns Nothing
+
+        """
         self.display.axes.set_xlabel(self.x_axis_title_text.GetValue())
         self.parameters['x axis title'] = self.x_axis_title_text.GetValue()
         self.display.parameters['x axis title'] = self.x_axis_title_text.GetValue()
         self.GraphResize(evt=None)
 
     def Grid_update(self, evt):
+        """
+            Common function : When the 'Grid' checkbox state is changed, this function changes the Display figure by
+            adding or removing the Grid depending on the checkbox state. Then, it readjust the Canvas to the window with
+             the new change
+
+            :returns Nothing
+
+        """
         self.display.axes.grid(self.grid_checkbox.GetValue())
         self.display.parameters['Grid'] = self.grid_checkbox.GetValue()
         self.parameters['Grid'] = self.grid_checkbox.GetValue()
         self.GraphResize(evt=None)
 
     def Update_tab_plot_type_config(self, evt):
+        """
+            When the plot type is changed, this function select and configure the tab with the correct configuration
+             depending on the plot type
 
+            :returns Nothing
+
+        """
         try:
             self.plot_type = self.plot_type_combo.GetValue()
             if self.plot_type == 'Disabled':
@@ -4952,36 +5379,40 @@ class RtppOtherTab(wx.Panel):
         except Exception as e:
             print('sunssvp: error: {}'.format((e)))
 
-    def Initial_Disabled_tab_config(self):
-
-        self.static_line_main = wx.StaticLine(self, style=wx.LI_VERTICAL)
-        self.main_sizer.Add(self.static_line_main, 0, wx.EXPAND)
-
-        self.display_Text = wx.StaticText(self, label=self.title_text.GetValue())
-        self.display_control_buttons_sizer.Add(self.display_Text, 1, wx.EXPAND)
-        self.display_Text.Hide()
-        self.main_sizer.Add(self.display_control_buttons_sizer, 2, wx.EXPAND)
 
 
 class RtpPrefDialog(wx.Dialog):
+
     def __init__(self, entity=None, title=None):
-        wx.Dialog.__init__(self, parent=None, title='Real-Time Plotting', size=(900, 600),
+        """
+            Initialize the Real-time Plotting prerefence Dialog
+            :param entity : wx.Frame, which is the parent of this dialog
+            title: string which is not really usefull
+
+        """
+        wx.Dialog.__init__(self, parent=entity, title='Real-Time Plotting', size=(900, 600),
                            style=wx.DEFAULT_DIALOG_STYLE | wx.RESIZE_BORDER | wx.MINIMIZE_BOX | wx.MAXIMIZE_BOX)
 
-        self.rtp_pref_nb = wx.Notebook(self, 0)
+        self.rtp_pref_nb = wx.Notebook(self, 0) #Notebook Panel that can have multiple Tab
 
-        self.main_tab = RtppMainTab(self.rtp_pref_nb)
-        other_tabs = self.RtppCreateOtherTab(self.main_tab, self.rtp_pref_nb)
+        self.main_tab = RtppMainTab(self.rtp_pref_nb) # main tab for General settings
+        # Creation of the other specific tab
+        other_tabs = self.RtppCreateOtherTab() #list of specific settings tab
 
+        #Adding the pages to the Notebook
         self.rtp_pref_nb.AddPage(self.main_tab, "General Preference")
         for tab in range(0, len(other_tabs)):
             self.rtp_pref_nb.AddPage(other_tabs[tab], other_tabs[tab].title)
+        #Updating the plot title in the Graph display of the General setting tab
         self.main_tab.Update_Graph_titles()
+        #Updating the position (row and column) of each tab considering the Graph Display
         self.RowColumnSetUp()
+        #Adding the Notebook to a sizer
         self.rtp_pref_nb.Fit()
         self.sizer = wx.BoxSizer(wx.VERTICAL)
         self.sizer.Add(self.rtp_pref_nb, 1, wx.ALL | wx.EXPAND | wx.ALIGN_CENTRE, 5)
 
+        #Initialising and Adding The ok, apply and Cancel button to the sizer
         buttons_sizer = wx.BoxSizer(wx.HORIZONTAL)
 
         buttons1 = wx.Button(self, label='Ok')
@@ -4996,20 +5427,35 @@ class RtpPrefDialog(wx.Dialog):
 
         self.sizer.Add(buttons_sizer, 0, wx.ALIGN_RIGHT)
 
+        #Adjusting the mainsizer to show it properly.
         self.SetSizer(self.sizer)
         self.Center()
 
     def _onCancel(self, evt):
+        """
+            Cancel the changes and close the window
+            :return: nothing
+        """
         self.Close()
 
-    def RtppCreateOtherTab(self, main_tab, nb):
+    def RtppCreateOtherTab(self):
+        """
+            Initialise the specific settings tab, depending on the number of tab needed
+            :return: tabs: list of NoteBook pages (Panel)
+        """
         tabs = []
-        for tab in range(0, main_tab.number_of_other_tab):
-            other_tab = RtppOtherTab(nb)
+        for tab in range(0, self.main_tab.number_of_other_tab):
+            other_tab = RtppOtherTab(self.rtp_pref_nb)
             tabs.append(other_tab)
         return tabs
 
     def RtppUpdateOtherTab(self):
+        """
+            When the number of rows or column is changed in the General setting tab,
+             this function removes or add the corresponding number of tabs.
+
+            :return: nothing
+        """
         new_number_of_tabs = self.main_tab.number_of_other_tab + 1
         old_number_of_tabs = self.rtp_pref_nb.GetPageCount()
         if new_number_of_tabs > old_number_of_tabs:
@@ -5023,6 +5469,12 @@ class RtpPrefDialog(wx.Dialog):
         self.sizer.Layout()
 
     def RowColumnSetUp(self):
+        """
+            When the number of rows or column is changed in the General setting tab,
+            this function reset the corresponding position of each tab (row and column).
+
+            :return: nothing
+        """
         column_lenght = self.main_tab.column_text.GetValue()
         row = 1
         column = 1
